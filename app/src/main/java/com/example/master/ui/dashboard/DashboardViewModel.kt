@@ -1,13 +1,11 @@
 package com.example.master.ui.dashboard
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 
 class DashboardViewModel : ViewModel() {
+    private val _uiState = mutableStateOf(DashboardUiState.sample())
 
-    private val _text = MutableLiveData<String>().apply {
-        value = "This is dashboard Fragment"
-    }
-    val text: LiveData<String> = _text
+    val uiState: State<DashboardUiState> = _uiState
 }

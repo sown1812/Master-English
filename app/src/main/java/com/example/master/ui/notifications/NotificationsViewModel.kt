@@ -1,13 +1,11 @@
 package com.example.master.ui.notifications
 
-import androidx.lifecycle.LiveData
-import androidx.lifecycle.MutableLiveData
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 
 class NotificationsViewModel : ViewModel() {
+    private val _uiState = mutableStateOf(NotificationUiState.sample())
 
-    private val _text = MutableLiveData<String>().apply {
-        value = "This is notifications Fragment"
-    }
-    val text: LiveData<String> = _text
+    val uiState: State<NotificationUiState> = _uiState
 }
