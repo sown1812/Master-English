@@ -10,6 +10,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -168,14 +169,6 @@ fun MultipleChoiceExercise(
                             Text(
                                 text = "Correct answer: ${exercise.correctAnswer}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF6B7280)
-                            )
-                        }
-                        exercise.word?.exampleSentence?.let { example ->
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Example: $example",
-                                style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF6B7280)
                             )
                         }

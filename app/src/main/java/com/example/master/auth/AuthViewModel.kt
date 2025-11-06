@@ -178,72 +178,6 @@ class AuthViewModel(
         }
     }
     
-    fun signInWithFacebook(token: String) {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    errorMessage = null,
-                    loginInProgress = AuthFlow.FACEBOOK
-                )
-            }
-            
-            when (val result = authManager.signInWithFacebook(token)) {
-                is AuthResult.Success -> {
-                    loadUserProfile()
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            loginInProgress = AuthFlow.NONE
-                        )
-                    }
-                }
-                is AuthResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = result.message,
-                            loginInProgress = AuthFlow.NONE
-                        )
-                    }
-                }
-            }
-        }
-    }
-    
-    fun continueAsGuest() {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isLoading = true,
-                    errorMessage = null,
-                    loginInProgress = AuthFlow.GUEST
-                )
-            }
-            
-            when (val result = authManager.signInAnonymously()) {
-                is AuthResult.Success -> {
-                    loadUserProfile()
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            loginInProgress = AuthFlow.NONE
-                        )
-                    }
-                }
-                is AuthResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isLoading = false,
-                            errorMessage = result.message,
-                            loginInProgress = AuthFlow.NONE
-                        )
-                    }
-                }
-            }
-        }
-    }
-    
     fun resetPassword() {
         val state = _uiState.value
         
@@ -325,7 +259,5 @@ data class AuthUiState(
 enum class AuthFlow {
     NONE,
     EMAIL,
-    GOOGLE,
-    FACEBOOK,
-    GUEST
+    GOOGLE
 }

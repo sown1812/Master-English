@@ -142,14 +142,6 @@ fun FillBlankExercise(
                                 color = Color(0xFF6B7280)
                             )
                         }
-                        exercise.word?.exampleSentence?.let { example ->
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Example: $example",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = Color(0xFF6B7280)
-                            )
-                        }
                     }
                 }
             }

@@ -1,7 +1,6 @@
 package com.example.master.auth
 
 import android.app.Activity
-import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
@@ -14,11 +13,6 @@ import androidx.fragment.app.Fragment
 import androidx.navigation.fragment.findNavController
 import com.example.master.MasterApplication
 import com.example.master.R
-import com.facebook.CallbackManager
-import com.facebook.FacebookCallback
-import com.facebook.FacebookException
-import com.facebook.login.LoginManager
-import com.facebook.login.LoginResult
 import com.google.android.gms.auth.api.signin.GoogleSignIn
 import com.google.android.gms.auth.api.signin.GoogleSignInClient
 import com.google.android.gms.auth.api.signin.GoogleSignInOptions
@@ -28,7 +22,6 @@ class LoginFragment : Fragment() {
     
     private lateinit var viewModel: AuthViewModel
     private lateinit var googleSignInClient: GoogleSignInClient
-    private val facebookCallbackManager: CallbackManager = CallbackManager.Factory.create()
     
     private val googleSignInLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -59,23 +52,6 @@ class LoginFragment : Fragment() {
             .requestEmail()
             .build()
         googleSignInClient = GoogleSignIn.getClient(requireContext(), gso)
-        
-        LoginManager.getInstance().registerCallback(
-            facebookCallbackManager,
-            object : FacebookCallback<LoginResult> {
-                override fun onSuccess(result: LoginResult) {
-                    viewModel.signInWithFacebook(result.accessToken.token)
-                }
-
-                override fun onCancel() {
-                    // Do nothing
-                }
-
-                override fun onError(error: FacebookException) {
-                    viewModel.reportError(error.localizedMessage ?: "Unable to sign in with Facebook")
-                }
-            }
-        )
     }
     
     override fun onCreateView(
@@ -99,31 +75,10 @@ class LoginFragment : Fragment() {
                         },
                         onGoogleSignIn = {
                             googleSignInLauncher.launch(googleSignInClient.signInIntent)
-                        },
-                        onFacebookSignIn = {
-                            startFacebookLogin()
-                        },
-                        onGuestSignIn = {
-                            viewModel.continueAsGuest()
                         }
                     )
                 }
             }
         }
-    }
-
-    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
-        super.onActivityResult(requestCode, resultCode, data)
-        facebookCallbackManager.onActivityResult(requestCode, resultCode, data)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        LoginManager.getInstance().unregisterCallback(facebookCallbackManager)
-    }
-
-    private fun startFacebookLogin() {
-        LoginManager.getInstance()
-            .logInWithReadPermissions(this, listOf("public_profile", "email"))
     }
 }

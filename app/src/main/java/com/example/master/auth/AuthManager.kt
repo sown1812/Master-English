@@ -3,11 +3,9 @@ package com.example.master.auth
 import com.example.master.core.user.UserProfile
 import com.example.master.data.local.entity.UserEntity
 import com.example.master.data.repository.LearningRepository
-import com.facebook.login.LoginManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
-import com.google.firebase.auth.FacebookAuthProvider
 import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -133,50 +131,8 @@ class AuthManager(
         }
     }
 
-    suspend fun signInWithFacebook(accessToken: String): AuthResult {
-        return try {
-            _authState.value = AuthState.Loading
-            val credential = FacebookAuthProvider.getCredential(accessToken)
-            val result = firebaseAuth.signInWithCredential(credential).await()
-            val firebaseUser = result.user
-            if (firebaseUser != null) {
-                val localUser = ensureLocalUser(firebaseUser)
-                _currentUser.value = localUser
-                _authState.value = AuthState.Authenticated(firebaseUser)
-                AuthResult.Success
-            } else {
-                _authState.value = AuthState.Unauthenticated
-                AuthResult.Error("Facebook sign-in failed")
-            }
-        } catch (e: Exception) {
-            _authState.value = AuthState.Unauthenticated
-            AuthResult.Error(e.message ?: "Facebook sign-in failed")
-        }
-    }
-
-    suspend fun signInAnonymously(displayName: String = "Guest"): AuthResult {
-        return try {
-            _authState.value = AuthState.Loading
-            val result = firebaseAuth.signInAnonymously().await()
-            val firebaseUser = result.user
-            if (firebaseUser != null) {
-                val localUser = ensureLocalUser(firebaseUser, displayName)
-                _currentUser.value = localUser
-                _authState.value = AuthState.Authenticated(firebaseUser)
-                AuthResult.Success
-            } else {
-                _authState.value = AuthState.Unauthenticated
-                AuthResult.Error("Guest sign-in failed")
-            }
-        } catch (e: Exception) {
-            _authState.value = AuthState.Unauthenticated
-            AuthResult.Error(e.message ?: "Guest sign-in failed")
-        }
-    }
-    
     suspend fun signOut() {
         firebaseAuth.signOut()
-        LoginManager.getInstance().logOut()
         _currentUser.value = null
         _authState.value = AuthState.Unauthenticated
     }
