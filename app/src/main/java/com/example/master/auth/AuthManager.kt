@@ -1,19 +1,29 @@
 package com.example.master.auth
 
+import com.example.master.core.user.UserProfile
 import com.example.master.data.local.entity.UserEntity
 import com.example.master.data.repository.LearningRepository
+import com.facebook.login.LoginManager
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
+import com.google.firebase.auth.FacebookAuthProvider
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
 class AuthManager(
     private val repository: LearningRepository
 ) {
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: Flow<AuthState> = _authState.asStateFlow()
@@ -29,6 +39,10 @@ class AuthManager(
         val firebaseUser = firebaseAuth.currentUser
         if (firebaseUser != null) {
             _authState.value = AuthState.Authenticated(firebaseUser)
+            scope.launch {
+                val localUser = ensureLocalUser(firebaseUser)
+                _currentUser.value = localUser
+            }
         } else {
             _authState.value = AuthState.Unauthenticated
         }
@@ -42,9 +56,7 @@ class AuthManager(
             val firebaseUser = result.user
             
             if (firebaseUser != null) {
-                // Load or create local user
-                val localUser = repository.getCurrentUserSync() 
-                    ?: createLocalUser(firebaseUser)
+                val localUser = ensureLocalUser(firebaseUser)
                 
                 _currentUser.value = localUser
                 _authState.value = AuthState.Authenticated(firebaseUser)
@@ -56,6 +68,30 @@ class AuthManager(
         } catch (e: Exception) {
             _authState.value = AuthState.Unauthenticated
             AuthResult.Error(e.message ?: "Unknown error occurred")
+        }
+    }
+    
+    suspend fun signInWithGoogle(idToken: String): AuthResult {
+        return try {
+            _authState.value = AuthState.Loading
+            
+            val credential = GoogleAuthProvider.getCredential(idToken, null)
+            val result = firebaseAuth.signInWithCredential(credential).await()
+            val firebaseUser = result.user
+            
+            if (firebaseUser != null) {
+                val localUser = ensureLocalUser(firebaseUser)
+                
+                _currentUser.value = localUser
+                _authState.value = AuthState.Authenticated(firebaseUser)
+                AuthResult.Success
+            } else {
+                _authState.value = AuthState.Unauthenticated
+                AuthResult.Error("Google sign-in failed")
+            }
+        } catch (e: Exception) {
+            _authState.value = AuthState.Unauthenticated
+            AuthResult.Error(e.message ?: "Google sign-in failed")
         }
     }
     
@@ -96,9 +132,51 @@ class AuthManager(
             AuthResult.Error(e.message ?: "Unknown error occurred")
         }
     }
+
+    suspend fun signInWithFacebook(accessToken: String): AuthResult {
+        return try {
+            _authState.value = AuthState.Loading
+            val credential = FacebookAuthProvider.getCredential(accessToken)
+            val result = firebaseAuth.signInWithCredential(credential).await()
+            val firebaseUser = result.user
+            if (firebaseUser != null) {
+                val localUser = ensureLocalUser(firebaseUser)
+                _currentUser.value = localUser
+                _authState.value = AuthState.Authenticated(firebaseUser)
+                AuthResult.Success
+            } else {
+                _authState.value = AuthState.Unauthenticated
+                AuthResult.Error("Facebook sign-in failed")
+            }
+        } catch (e: Exception) {
+            _authState.value = AuthState.Unauthenticated
+            AuthResult.Error(e.message ?: "Facebook sign-in failed")
+        }
+    }
+
+    suspend fun signInAnonymously(displayName: String = "Guest"): AuthResult {
+        return try {
+            _authState.value = AuthState.Loading
+            val result = firebaseAuth.signInAnonymously().await()
+            val firebaseUser = result.user
+            if (firebaseUser != null) {
+                val localUser = ensureLocalUser(firebaseUser, displayName)
+                _currentUser.value = localUser
+                _authState.value = AuthState.Authenticated(firebaseUser)
+                AuthResult.Success
+            } else {
+                _authState.value = AuthState.Unauthenticated
+                AuthResult.Error("Guest sign-in failed")
+            }
+        } catch (e: Exception) {
+            _authState.value = AuthState.Unauthenticated
+            AuthResult.Error(e.message ?: "Guest sign-in failed")
+        }
+    }
     
     suspend fun signOut() {
         firebaseAuth.signOut()
+        LoginManager.getInstance().logOut()
         _currentUser.value = null
         _authState.value = AuthState.Unauthenticated
     }
@@ -134,6 +212,17 @@ class AuthManager(
         repository.insertUser(user)
         return user
     }
+
+    private suspend fun ensureLocalUser(
+        firebaseUser: FirebaseUser,
+        fallbackDisplayName: String? = null
+    ): UserEntity {
+        val existing = repository.getUserByIdSync(firebaseUser.uid)
+        if (existing != null) return existing
+        val created = createLocalUser(firebaseUser, fallbackDisplayName ?: firebaseUser.displayName)
+        repository.initializeAchievements(firebaseUser.uid)
+        return created
+    }
     
     fun getCurrentUserId(): String? {
         return firebaseAuth.currentUser?.uid
@@ -141,6 +230,16 @@ class AuthManager(
     
     fun isAuthenticated(): Boolean {
         return firebaseAuth.currentUser != null
+    }
+
+    suspend fun getUserProfile(): UserProfile? {
+        val userId = firebaseAuth.currentUser?.uid ?: return null
+        return repository.getUserProfileSync(userId)
+    }
+
+    fun observeUserProfile(): Flow<UserProfile?> {
+        val userId = firebaseAuth.currentUser?.uid ?: return flowOf(null)
+        return repository.getUserProfile(userId)
     }
 }
 

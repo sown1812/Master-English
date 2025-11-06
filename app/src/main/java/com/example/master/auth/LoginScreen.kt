@@ -9,7 +9,16 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Email
+import androidx.compose.material.icons.filled.Facebook
+import androidx.compose.material.icons.filled.Lightbulb
+import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -22,14 +31,19 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.master.R
 
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
     onNavigateToRegister: () -> Unit,
-    onLoginSuccess: () -> Unit
+    onLoginSuccess: () -> Unit,
+    onGoogleSignIn: () -> Unit,
+    onFacebookSignIn: () -> Unit,
+    onGuestSignIn: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val authState by viewModel.authState.collectAsState()
@@ -205,7 +219,7 @@ fun LoginScreen(
                             containerColor = Color(0xFF6366F1)
                         )
                     ) {
-                        if (uiState.isLoading) {
+                        if (uiState.isLoading && uiState.loginInProgress == AuthFlow.EMAIL) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(24.dp),
                                 color = Color.White
@@ -231,6 +245,102 @@ fun LoginScreen(
                             // TODO: Navigate to forgot password
                         }
                     )
+                    
+                    Spacer(modifier = Modifier.height(24.dp))
+                    
+                    // Google Sign-In Button
+                    OutlinedButton(
+                        onClick = onGoogleSignIn,
+                        enabled = !uiState.isLoading || (uiState.isLoading && uiState.loginInProgress == AuthFlow.GOOGLE),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (uiState.isLoading && uiState.loginInProgress == AuthFlow.GOOGLE) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.AccountCircle,
+                                contentDescription = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.login_continue_google),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = Color(0xFF1F2937)
+                            )
+                        }
+                    }
+                    
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Facebook Sign-In Button
+                    Button(
+                        onClick = onFacebookSignIn,
+                        enabled = !uiState.isLoading || (uiState.isLoading && uiState.loginInProgress == AuthFlow.FACEBOOK),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1877F2))
+                    ) {
+                        if (uiState.isLoading && uiState.loginInProgress == AuthFlow.FACEBOOK) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp),
+                                color = Color.White
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.Facebook,
+                                contentDescription = null,
+                                tint = Color.White
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.login_continue_facebook),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = Color.White
+                                )
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // Guest Sign-In Button
+                    OutlinedButton(
+                        onClick = onGuestSignIn,
+                        enabled = !uiState.isLoading || (uiState.isLoading && uiState.loginInProgress == AuthFlow.GUEST),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (uiState.isLoading && uiState.loginInProgress == AuthFlow.GUEST) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.Person,
+                                contentDescription = null
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.login_continue_guest),
+                                style = MaterialTheme.typography.titleMedium.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = Color(0xFF1F2937)
+                            )
+                        }
+                    }
                     
                     Spacer(modifier = Modifier.height(24.dp))
                     

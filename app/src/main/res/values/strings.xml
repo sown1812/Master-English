@@ -1,6 +1,12 @@
 <resources>
     <string name="app_name">Master English</string>
-    <string name="title_home">Trang chủ</string>
-    <string name="title_dashboard">Thành tích</string>
-    <string name="title_notifications">Thông báo</string>
+    <string name="title_home">Trang chu</string>
+    <string name="title_dashboard">Thanh tich</string>
+    <string name="title_notifications">Thong bao</string>
+    <string name="default_web_client_id">1061693617019-uiarescu14knpr99guja2p11ejbdimm0.apps.googleusercontent.com</string>
+    <string name="login_continue_google">Continue with Google</string>
+    <string name="login_continue_facebook">Continue with Facebook</string>
+    <string name="login_continue_guest">Continue as Guest</string>
+    <string name="facebook_app_id">REPLACE_WITH_FACEBOOK_APP_ID</string>
+    <string name="facebook_protocol_scheme">fbREPLACE_WITH_FACEBOOK_APP_ID</string>
 </resources>

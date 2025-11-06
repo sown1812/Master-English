@@ -4,13 +4,25 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.master.data.local.entity.UserProgressEntity
 import com.example.master.data.repository.LearningRepository
-import kotlinx.coroutines.flow.*
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+
+private const val FAIL_XP_REWARD = 10
+private const val FAIL_COIN_REWARD = 4
 
 class LessonViewModel(
     private val repository: LearningRepository,
     private val lessonId: Int
 ) : ViewModel() {
+    
+    private val gson = Gson()
+    private val engine = ExerciseEngine()
     
     private val _uiState = MutableStateFlow(LessonUiState(lessonId = lessonId))
     val uiState: StateFlow<LessonUiState> = _uiState.asStateFlow()
@@ -21,67 +33,98 @@ class LessonViewModel(
     
     private fun loadLesson() {
         viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true) }
             try {
                 val lesson = repository.getLessonById(lessonId)
                 val exercises = repository.getExercisesByLesson(lessonId).first()
                 val words = repository.getWordsByLesson(lessonId).first()
                 
-                val exerciseList = exercises.map { exerciseEntity ->
-                    val word = words.find { it.id == exerciseEntity.wordId }
-                    
-                    when (exerciseEntity.type) {
-                        "MULTIPLE_CHOICE" -> Exercise.MultipleChoice(
-                            id = exerciseEntity.id,
-                            question = exerciseEntity.question,
-                            correctAnswer = exerciseEntity.correctAnswer,
-                            word = word,
-                            options = listOf(
-                                exerciseEntity.optionA,
-                                exerciseEntity.optionB,
-                                exerciseEntity.optionC,
-                                exerciseEntity.optionD
-                            ).filterNotNull().shuffled()
-                        )
-                        
-                        "FILL_BLANK" -> Exercise.FillBlank(
-                            id = exerciseEntity.id,
-                            question = exerciseEntity.question,
-                            correctAnswer = exerciseEntity.correctAnswer,
-                            word = word,
-                            hint = exerciseEntity.hint
-                        )
-                        
-                        "MATCHING" -> {
-                            // Parse match pairs from JSON or create from words
-                            val pairs = words.take(4).map { w ->
-                                MatchPair(w.word, w.translation)
-                            }.shuffled()
-                            
-                            Exercise.Matching(
+                val exerciseList = exercises
+                    .sortedBy { it.order }
+                    .map { exerciseEntity ->
+                        val word = words.find { it.id == exerciseEntity.wordId }
+                        when (exerciseEntity.type.uppercase()) {
+                            "MULTIPLE_CHOICE" -> Exercise.MultipleChoice(
                                 id = exerciseEntity.id,
-                                question = "Match the words with their translations",
+                                question = exerciseEntity.question,
+                                correctAnswer = exerciseEntity.correctAnswer,
+                                word = word,
+                                explanation = exerciseEntity.explanation,
+                                options = listOfNotNull(
+                                    exerciseEntity.optionA,
+                                    exerciseEntity.optionB,
+                                    exerciseEntity.optionC,
+                                    exerciseEntity.optionD,
+                                    exerciseEntity.correctAnswer
+                                ).distinct().shuffled()
+                            )
+                            
+                            "FILL_BLANK" -> Exercise.FillBlank(
+                                id = exerciseEntity.id,
+                                question = exerciseEntity.question,
+                                correctAnswer = exerciseEntity.correctAnswer,
+                                word = word,
+                                explanation = exerciseEntity.explanation,
+                                hint = exerciseEntity.hint
+                            )
+                            
+                            "TRANSLATION" -> Exercise.Translation(
+                                id = exerciseEntity.id,
+                                question = exerciseEntity.question,
+                                correctAnswer = exerciseEntity.correctAnswer,
+                                word = word,
+                                explanation = exerciseEntity.explanation
+                            )
+                            
+                            "MATCHING" -> Exercise.Matching(
+                                id = exerciseEntity.id,
+                                question = exerciseEntity.question.ifBlank { "Match the words with their translations" },
                                 correctAnswer = "",
-                                word = null,
-                                pairs = pairs
+                                word = word,
+                                explanation = exerciseEntity.explanation,
+                                pairs = parseMatchPairs(exerciseEntity.matchPairs, words)
+                            )
+                            
+                            "LISTENING" -> Exercise.Listening(
+                                id = exerciseEntity.id,
+                                question = exerciseEntity.question.ifBlank { "Listen and choose the correct answer" },
+                                correctAnswer = exerciseEntity.correctAnswer,
+                                word = word,
+                                explanation = exerciseEntity.explanation,
+                                audioUrl = word?.audioUrl,
+                                options = buildListeningOptions(exerciseEntity, words)
+                            )
+                            
+                            "SPEAKING" -> Exercise.Speaking(
+                                id = exerciseEntity.id,
+                                question = exerciseEntity.question.ifBlank { "Speak the highlighted phrase" },
+                                correctAnswer = exerciseEntity.correctAnswer,
+                                word = word,
+                                explanation = exerciseEntity.explanation,
+                                prompt = exerciseEntity.question.ifBlank {
+                                    word?.word ?: exerciseEntity.correctAnswer
+                                }
+                            )
+                            
+                            "PICTURE_MATCH", "PICTURE" -> Exercise.PictureMatching(
+                                id = exerciseEntity.id,
+                                question = exerciseEntity.question.ifBlank { "Tap the picture that matches the word" },
+                                correctAnswer = word?.word ?: exerciseEntity.correctAnswer,
+                                word = word,
+                                explanation = exerciseEntity.explanation,
+                                options = buildPictureOptions(exerciseEntity, words, word)
+                            )
+                            
+                            else -> Exercise.MultipleChoice(
+                                id = exerciseEntity.id,
+                                question = exerciseEntity.question,
+                                correctAnswer = exerciseEntity.correctAnswer,
+                                word = word,
+                                explanation = exerciseEntity.explanation,
+                                options = listOf(exerciseEntity.correctAnswer)
                             )
                         }
-                        
-                        "TRANSLATION" -> Exercise.Translation(
-                            id = exerciseEntity.id,
-                            question = exerciseEntity.question,
-                            correctAnswer = exerciseEntity.correctAnswer,
-                            word = word
-                        )
-                        
-                        else -> Exercise.MultipleChoice(
-                            id = exerciseEntity.id,
-                            question = exerciseEntity.question,
-                            correctAnswer = exerciseEntity.correctAnswer,
-                            word = word,
-                            options = listOf(exerciseEntity.correctAnswer)
-                        )
                     }
-                }
                 
                 _uiState.update {
                     it.copy(
@@ -102,95 +145,157 @@ class LessonViewModel(
             is LessonEvent.AnswerSelected -> handleAnswerSelected(event.answer)
             is LessonEvent.FillBlankAnswered -> handleFillBlankAnswered(event.answer)
             is LessonEvent.PairMatched -> handlePairMatched(event.left, event.right)
+            is LessonEvent.PictureOptionSelected -> handlePictureOptionSelected(event.optionId)
+            is LessonEvent.SpeakingAnswerCaptured -> handleSpeakingTranscript(event.transcript)
             LessonEvent.SubmitAnswer -> submitAnswer()
             LessonEvent.NextExercise -> nextExercise()
-            LessonEvent.PlayAudio -> playAudio()
             LessonEvent.ShowHint -> showHint()
             LessonEvent.RetryLesson -> retryLesson()
-            LessonEvent.ExitLesson -> {}
+            LessonEvent.ExitLesson -> Unit
         }
     }
     
     private fun handleAnswerSelected(answer: String) {
-        val currentExercise = getCurrentExercise() as? Exercise.MultipleChoice ?: return
-        
+        val currentExercise = getCurrentExercise() ?: return
+        val index = _uiState.value.currentExerciseIndex
         val updatedExercises = _uiState.value.exercises.toMutableList()
-        updatedExercises[_uiState.value.currentExerciseIndex] = 
-            currentExercise.copy(selectedAnswer = answer)
         
-        _uiState.update { it.copy(exercises = updatedExercises) }
-    }
-    
-    private fun handleFillBlankAnswered(answer: String) {
-        val currentExercise = getCurrentExercise()
-        
-        val updatedExercises = _uiState.value.exercises.toMutableList()
-        when (currentExercise) {
-            is Exercise.FillBlank -> {
-                updatedExercises[_uiState.value.currentExerciseIndex] = 
-                    currentExercise.copy(userAnswer = answer)
-            }
-            is Exercise.Translation -> {
-                updatedExercises[_uiState.value.currentExerciseIndex] = 
-                    currentExercise.copy(userAnswer = answer)
-            }
+        val updatedExercise = when (currentExercise) {
+            is Exercise.MultipleChoice -> currentExercise.copy(selectedAnswer = answer)
+            is Exercise.Listening -> currentExercise.copy(selectedAnswer = answer)
             else -> return
         }
         
-        _uiState.update { it.copy(exercises = updatedExercises) }
-    }
-    
-    private fun handlePairMatched(left: String, right: String) {
-        val currentExercise = getCurrentExercise() as? Exercise.Matching ?: return
-        
-        val updatedPairs = currentExercise.selectedPairs.toMutableMap()
-        updatedPairs[left] = right
-        
-        val updatedExercises = _uiState.value.exercises.toMutableList()
-        updatedExercises[_uiState.value.currentExerciseIndex] = 
-            currentExercise.copy(selectedPairs = updatedPairs)
-        
-        _uiState.update { it.copy(exercises = updatedExercises) }
-    }
-    
-    private fun submitAnswer() {
-        val currentExercise = getCurrentExercise() ?: return
-        val isCorrect = checkAnswer(currentExercise)
-        
+        updatedExercises[index] = updatedExercise
         _uiState.update {
             it.copy(
-                showResult = true,
-                lastAnswerCorrect = isCorrect,
-                correctAnswers = if (isCorrect) it.correctAnswers + 1 else it.correctAnswers,
-                wrongAnswers = if (!isCorrect) it.wrongAnswers + 1 else it.wrongAnswers,
-                hearts = if (!isCorrect) (it.hearts - 1).coerceAtLeast(0) else it.hearts,
-                score = if (isCorrect) it.score + 10 else it.score
+                exercises = updatedExercises,
+                isAnswerReady = true,
+                feedbackMessage = null,
+                explanation = null
             )
         }
     }
     
-    private fun checkAnswer(exercise: Exercise): Boolean {
-        return when (exercise) {
-            is Exercise.MultipleChoice -> {
-                exercise.selectedAnswer?.equals(exercise.correctAnswer, ignoreCase = true) == true
-            }
+    private fun handleFillBlankAnswered(answer: String) {
+        val currentExercise = getCurrentExercise() ?: return
+        val index = _uiState.value.currentExerciseIndex
+        val updatedExercises = _uiState.value.exercises.toMutableList()
+        
+        when (currentExercise) {
             is Exercise.FillBlank -> {
-                exercise.userAnswer.trim().equals(exercise.correctAnswer, ignoreCase = true)
-            }
-            is Exercise.Matching -> {
-                exercise.pairs.all { pair ->
-                    exercise.selectedPairs[pair.left] == pair.right
-                }
+                updatedExercises[index] = currentExercise.copy(userAnswer = answer)
             }
             is Exercise.Translation -> {
-                exercise.userAnswer.trim().equals(exercise.correctAnswer, ignoreCase = true)
+                updatedExercises[index] = currentExercise.copy(userAnswer = answer)
             }
+            else -> return
+        }
+        
+        _uiState.update {
+            it.copy(
+                exercises = updatedExercises,
+                isAnswerReady = answer.isNotBlank(),
+                feedbackMessage = null,
+                explanation = null
+            )
+        }
+    }
+    
+    private fun handlePairMatched(left: String, right: String) {
+        val currentExercise = getCurrentExercise() as? Exercise.Matching ?: return
+        val index = _uiState.value.currentExerciseIndex
+        
+        val updatedPairs = currentExercise.selectedPairs.toMutableMap()
+        updatedPairs[left] = right
+        
+        val updatedExercise = currentExercise.copy(selectedPairs = updatedPairs)
+        val updatedExercises = _uiState.value.exercises.toMutableList()
+        updatedExercises[index] = updatedExercise
+        
+        val allPairsSelected = updatedExercise.selectedPairs.size == updatedExercise.pairs.size
+        _uiState.update {
+            it.copy(
+                exercises = updatedExercises,
+                isAnswerReady = allPairsSelected,
+                feedbackMessage = null,
+                explanation = null
+            )
+        }
+    }
+    
+    private fun handlePictureOptionSelected(optionId: String) {
+        val currentExercise = getCurrentExercise() as? Exercise.PictureMatching ?: return
+        val index = _uiState.value.currentExerciseIndex
+        
+        val updatedExercise = currentExercise.copy(selectedOptionId = optionId)
+        val updatedExercises = _uiState.value.exercises.toMutableList()
+        updatedExercises[index] = updatedExercise
+        
+        _uiState.update {
+            it.copy(
+                exercises = updatedExercises,
+                isAnswerReady = true,
+                feedbackMessage = null,
+                explanation = null
+            )
+        }
+    }
+    
+    private fun handleSpeakingTranscript(transcript: String) {
+        val currentExercise = getCurrentExercise() as? Exercise.Speaking ?: return
+        val index = _uiState.value.currentExerciseIndex
+        
+        val updatedExercise = currentExercise.copy(recognizedText = transcript)
+        val updatedExercises = _uiState.value.exercises.toMutableList()
+        updatedExercises[index] = updatedExercise
+        
+        _uiState.update {
+            it.copy(
+                exercises = updatedExercises,
+                isAnswerReady = transcript.isNotBlank(),
+                feedbackMessage = null,
+                explanation = null
+            )
+        }
+    }
+    
+    private fun submitAnswer() {
+        val currentExercise = getCurrentExercise() ?: return
+        if (!uiState.value.isAnswerReady && currentExercise !is Exercise.Matching) return
+        
+        val evaluation = engine.evaluate(currentExercise)
+        val previousCorrect = _uiState.value.correctAnswers
+        val previousWrong = _uiState.value.wrongAnswers
+        
+        val newCorrect = if (evaluation.isCorrect) previousCorrect + 1 else previousCorrect
+        val newWrong = if (!evaluation.isCorrect) previousWrong + 1 else previousWrong
+        val totalAttempts = newCorrect + newWrong
+        val accuracy = engine.calculateAccuracy(newCorrect, totalAttempts)
+        val newHearts = (_uiState.value.hearts + evaluation.heartsDelta).coerceAtLeast(0)
+        
+        _uiState.update {
+            it.copy(
+                score = it.score + evaluation.scoreDelta,
+                hearts = newHearts,
+                correctAnswers = newCorrect,
+                wrongAnswers = newWrong,
+                accuracy = accuracy,
+                showResult = true,
+                lastAnswerCorrect = evaluation.isCorrect,
+                feedbackMessage = evaluation.feedback,
+                explanation = if (evaluation.isCorrect) null else evaluation.explanation,
+                isAnswerReady = false
+            )
+        }
+        
+        if (!evaluation.isCorrect && newHearts == 0) {
+            completeLesson(forceFail = true)
         }
     }
     
     private fun nextExercise() {
         val nextIndex = _uiState.value.currentExerciseIndex + 1
-        
         if (nextIndex >= _uiState.value.totalExercises) {
             completeLesson()
         } else {
@@ -198,82 +303,104 @@ class LessonViewModel(
                 it.copy(
                     currentExerciseIndex = nextIndex,
                     showResult = false,
-                    lastAnswerCorrect = null
+                    lastAnswerCorrect = null,
+                    feedbackMessage = null,
+                    explanation = null,
+                    isAnswerReady = when (val nextExercise = it.exercises[nextIndex]) {
+                        is Exercise.FillBlank -> nextExercise.userAnswer.isNotBlank()
+                        is Exercise.Translation -> nextExercise.userAnswer.isNotBlank()
+                        is Exercise.MultipleChoice -> nextExercise.selectedAnswer != null
+                        is Exercise.Listening -> nextExercise.selectedAnswer != null
+                        is Exercise.Matching -> nextExercise.selectedPairs.isNotEmpty()
+                        is Exercise.PictureMatching -> nextExercise.selectedOptionId != null
+                        is Exercise.Speaking -> nextExercise.recognizedText.isNotBlank()
+                    }
                 )
             }
         }
     }
     
-    private fun completeLesson() {
+    private fun completeLesson(forceFail: Boolean = false) {
         viewModelScope.launch {
             val state = _uiState.value
-            val accuracy = state.correctAnswers.toFloat() / state.totalExercises
-            val xpEarned = calculateXP(state.score, accuracy)
-            val coinsEarned = calculateCoins(state.score, accuracy)
+            val totalAttempts = (state.correctAnswers + state.wrongAnswers).coerceAtLeast(1)
+            val accuracy = engine.calculateAccuracy(state.correctAnswers, totalAttempts)
+            val isPassed = !forceFail && accuracy >= PASS_ACCURACY_THRESHOLD
+            val rewards = if (isPassed) {
+                engine.calculateRewards(state.score, accuracy)
+            } else {
+                LessonRewards(xp = FAIL_XP_REWARD, coins = FAIL_COIN_REWARD)
+            }
             
-            // Save progress
-            val userId = repository.getCurrentUserSync()?.userId ?: return@launch
-            
-            val progress = UserProgressEntity(
-                userId = userId,
-                lessonId = lessonId,
-                isCompleted = accuracy >= 0.7f,
-                score = state.score,
-                accuracy = accuracy,
-                attempts = 1,
-                correctAnswers = state.correctAnswers,
-                wrongAnswers = state.wrongAnswers,
-                xpEarned = xpEarned,
-                coinsEarned = coinsEarned,
-                completedAt = if (accuracy >= 0.7f) System.currentTimeMillis() else null
-            )
-            
-            repository.saveProgress(progress)
+            val userId = repository.getCurrentUserSync()?.userId
+            if (userId != null) {
+                val progress = UserProgressEntity(
+                    userId = userId,
+                    lessonId = lessonId,
+                    isCompleted = isPassed,
+                    score = state.score,
+                    accuracy = accuracy,
+                    attempts = totalAttempts,
+                    correctAnswers = state.correctAnswers,
+                    wrongAnswers = state.wrongAnswers,
+                    xpEarned = rewards.xp,
+                    coinsEarned = rewards.coins,
+                    completedAt = if (isPassed) System.currentTimeMillis() else null
+                )
+                repository.saveProgress(progress)
+            }
             
             _uiState.update {
                 it.copy(
                     isCompleted = true,
-                    showResult = false
+                    isFailed = !isPassed,
+                    showResult = false,
+                    lastAnswerCorrect = null,
+                    feedbackMessage = null,
+                    explanation = null,
+                    lastXpEarned = rewards.xp,
+                    lastCoinsEarned = rewards.coins
                 )
             }
         }
     }
     
-    private fun calculateXP(score: Int, accuracy: Float): Int {
-        val baseXP = 50
-        val bonusXP = (score * accuracy).toInt()
-        return baseXP + bonusXP
-    }
-    
-    private fun calculateCoins(score: Int, accuracy: Float): Int {
-        return when {
-            accuracy >= 0.9f -> 20
-            accuracy >= 0.7f -> 10
-            else -> 5
-        }
-    }
-    
-    private fun playAudio() {
-        // TODO: Implement TTS
-        val currentExercise = getCurrentExercise()
-        currentExercise?.word?.let { word ->
-            // Play audio for word
-        }
-    }
-    
     private fun showHint() {
-        // TODO: Show hint (costs coins)
+        // TODO: Integrate hint system consuming coins
     }
     
     private fun retryLesson() {
-        _uiState.update {
-            LessonUiState(
-                lessonId = lessonId,
-                lessonTitle = it.lessonTitle,
-                exercises = it.exercises,
-                totalExercises = it.totalExercises,
-                isLoading = false
+        _uiState.update { state ->
+            state.copy(
+                currentExerciseIndex = 0,
+                score = 0,
+                correctAnswers = 0,
+                wrongAnswers = 0,
+                accuracy = 0f,
+                hearts = state.totalHearts,
+                lastXpEarned = 0,
+                lastCoinsEarned = 0,
+                isAnswerReady = false,
+                isCompleted = false,
+                isFailed = false,
+                showResult = false,
+                lastAnswerCorrect = null,
+                feedbackMessage = null,
+                explanation = null,
+                exercises = state.exercises.map { resetExercise(it) }
             )
+        }
+    }
+    
+    private fun resetExercise(exercise: Exercise): Exercise {
+        return when (exercise) {
+            is Exercise.MultipleChoice -> exercise.copy(selectedAnswer = null)
+            is Exercise.FillBlank -> exercise.copy(userAnswer = "")
+            is Exercise.Matching -> exercise.copy(selectedPairs = emptyMap())
+            is Exercise.Translation -> exercise.copy(userAnswer = "")
+            is Exercise.Listening -> exercise.copy(selectedAnswer = null)
+            is Exercise.Speaking -> exercise.copy(recognizedText = "")
+            is Exercise.PictureMatching -> exercise.copy(selectedOptionId = null)
         }
     }
     
@@ -283,7 +410,9 @@ class LessonViewModel(
     
     fun getLessonResult(): LessonResult {
         val state = _uiState.value
-        val accuracy = state.correctAnswers.toFloat() / state.totalExercises
+        val totalAttempts = (state.correctAnswers + state.wrongAnswers).coerceAtLeast(1)
+        val accuracy = engine.calculateAccuracy(state.correctAnswers, totalAttempts)
+        val isPassed = !state.isFailed && accuracy >= PASS_ACCURACY_THRESHOLD
         
         return LessonResult(
             lessonId = lessonId,
@@ -291,9 +420,79 @@ class LessonViewModel(
             correctAnswers = state.correctAnswers,
             wrongAnswers = state.wrongAnswers,
             accuracy = accuracy,
-            xpEarned = calculateXP(state.score, accuracy),
-            coinsEarned = calculateCoins(state.score, accuracy),
-            isPassed = accuracy >= 0.7f
+            xpEarned = state.lastXpEarned,
+            coinsEarned = state.lastCoinsEarned,
+            isPassed = isPassed
         )
+    }
+    
+    private fun parseMatchPairs(
+        matchPairsJson: String?,
+        words: List<com.example.master.data.local.entity.WordEntity>
+    ): List<MatchPair> {
+        if (!matchPairsJson.isNullOrBlank()) {
+            return runCatching {
+                val listType = object : TypeToken<List<MatchPair>>() {}.type
+                gson.fromJson<List<MatchPair>>(matchPairsJson, listType)
+            }.getOrNull()?.takeIf { it.isNotEmpty() } ?: emptyList()
+        }
+        
+        return words
+            .shuffled()
+            .take(4)
+            .map { word -> MatchPair(word.word, word.translation) }
+    }
+    
+    private fun buildListeningOptions(
+        exerciseEntity: com.example.master.data.local.entity.ExerciseEntity,
+        words: List<com.example.master.data.local.entity.WordEntity>
+    ): List<String> {
+        val baseOptions = listOfNotNull(
+            exerciseEntity.optionA,
+            exerciseEntity.optionB,
+            exerciseEntity.optionC,
+            exerciseEntity.optionD
+        ).toMutableList()
+        
+        if (exerciseEntity.correctAnswer.isNotBlank() && exerciseEntity.correctAnswer !in baseOptions) {
+            baseOptions.add(exerciseEntity.correctAnswer)
+        }
+        
+        if (baseOptions.size < 4) {
+            baseOptions += words.shuffled()
+                .map { it.translation }
+                .filter { it !in baseOptions }
+                .take(4 - baseOptions.size)
+        }
+        
+        return baseOptions.distinct().shuffled()
+    }
+    
+    private fun buildPictureOptions(
+        exerciseEntity: com.example.master.data.local.entity.ExerciseEntity,
+        words: List<com.example.master.data.local.entity.WordEntity>,
+        targetWord: com.example.master.data.local.entity.WordEntity?
+    ): List<PictureOption> {
+        val parsed = if (!exerciseEntity.matchPairs.isNullOrBlank()) {
+            runCatching {
+                val listType = object : TypeToken<List<PictureOption>>() {}.type
+                gson.fromJson<List<PictureOption>>(exerciseEntity.matchPairs, listType)
+            }.getOrNull().orEmpty()
+        } else emptyList()
+        
+        val fallback = if (parsed.isEmpty()) {
+            (listOfNotNull(targetWord) + words.filter { it.id != targetWord?.id })
+                .distinct()
+                .take(4)
+                .map { word ->
+                    PictureOption(
+                        id = word.word,
+                        label = word.word,
+                        imageUrl = word.imageUrl
+                    )
+                }
+        } else parsed
+        
+        return fallback.shuffled()
     }
 }

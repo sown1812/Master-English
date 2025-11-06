@@ -1,9 +1,12 @@
 package com.example.master.data.repository
 
+import com.example.master.core.user.UserProfile
+import com.example.master.core.user.toUserProfile
 import com.example.master.data.local.AppDatabase
 import com.example.master.data.local.entity.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 import javax.inject.Singleton
 
@@ -54,6 +57,16 @@ class LearningRepository(private val database: AppDatabase) {
     fun getCurrentUser(): Flow<UserEntity?> = userDao.getCurrentUser()
     
     suspend fun getCurrentUserSync(): UserEntity? = userDao.getCurrentUserSync()
+    
+    fun getUserById(userId: String): Flow<UserEntity?> = userDao.getUserById(userId)
+    
+    suspend fun getUserByIdSync(userId: String): UserEntity? = userDao.getUserByIdSync(userId)
+    
+    fun getUserProfile(userId: String): Flow<UserProfile?> =
+        userDao.getUserById(userId).map { it?.toUserProfile() }
+    
+    suspend fun getUserProfileSync(userId: String): UserProfile? =
+        userDao.getUserByIdSync(userId)?.toUserProfile()
     
     suspend fun insertUser(user: UserEntity) = userDao.insertUser(user)
     

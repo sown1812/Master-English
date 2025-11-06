@@ -2,6 +2,7 @@ package com.example.master.auth
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.master.core.user.UserProfile
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -18,6 +19,9 @@ class AuthViewModel(
     
     private val _uiState = MutableStateFlow(AuthUiState())
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
+    
+    private val _userProfile = MutableStateFlow<UserProfile?>(null)
+    val userProfile: StateFlow<UserProfile?> = _userProfile.asStateFlow()
     
     fun onEmailChanged(email: String) {
         _uiState.update { it.copy(email = email, emailError = null) }
@@ -50,17 +54,30 @@ class AuthViewModel(
         }
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { 
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    loginInProgress = AuthFlow.EMAIL
+                ) 
+            }
             
             when (val result = authManager.signIn(state.email, state.password)) {
                 is AuthResult.Success -> {
-                    _uiState.update { it.copy(isLoading = false) }
+                    loadUserProfile()
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            loginInProgress = AuthFlow.NONE
+                        ) 
+                    }
                 }
                 is AuthResult.Error -> {
                     _uiState.update { 
                         it.copy(
                             isLoading = false, 
-                            errorMessage = result.message
+                            errorMessage = result.message,
+                            loginInProgress = AuthFlow.NONE
                         ) 
                     }
                 }
@@ -93,7 +110,13 @@ class AuthViewModel(
         }
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { 
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    loginInProgress = AuthFlow.NONE
+                ) 
+            }
             
             when (val result = authManager.signUp(
                 state.email, 
@@ -101,14 +124,120 @@ class AuthViewModel(
                 state.displayName
             )) {
                 is AuthResult.Success -> {
-                    _uiState.update { it.copy(isLoading = false) }
+                    loadUserProfile()
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            loginInProgress = AuthFlow.NONE
+                        ) 
+                    }
                 }
                 is AuthResult.Error -> {
                     _uiState.update { 
                         it.copy(
                             isLoading = false, 
-                            errorMessage = result.message
+                            errorMessage = result.message,
+                            loginInProgress = AuthFlow.NONE
                         ) 
+                    }
+                }
+            }
+        }
+    }
+    
+    fun signInWithGoogle(idToken: String) {
+        viewModelScope.launch {
+            _uiState.update { 
+                it.copy(
+                    isLoading = true, 
+                    errorMessage = null,
+                    loginInProgress = AuthFlow.GOOGLE
+                ) 
+            }
+            
+            when (val result = authManager.signInWithGoogle(idToken)) {
+                is AuthResult.Success -> {
+                    loadUserProfile()
+                    _uiState.update { 
+                        it.copy(
+                            isLoading = false,
+                            loginInProgress = AuthFlow.NONE
+                        )
+                    }
+                }
+                is AuthResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = result.message,
+                            loginInProgress = AuthFlow.NONE
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    fun signInWithFacebook(token: String) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    loginInProgress = AuthFlow.FACEBOOK
+                )
+            }
+            
+            when (val result = authManager.signInWithFacebook(token)) {
+                is AuthResult.Success -> {
+                    loadUserProfile()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            loginInProgress = AuthFlow.NONE
+                        )
+                    }
+                }
+                is AuthResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = result.message,
+                            loginInProgress = AuthFlow.NONE
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
+    fun continueAsGuest() {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    loginInProgress = AuthFlow.GUEST
+                )
+            }
+            
+            when (val result = authManager.signInAnonymously()) {
+                is AuthResult.Success -> {
+                    loadUserProfile()
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            loginInProgress = AuthFlow.NONE
+                        )
+                    }
+                }
+                is AuthResult.Error -> {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = result.message,
+                            loginInProgress = AuthFlow.NONE
+                        )
                     }
                 }
             }
@@ -124,14 +253,21 @@ class AuthViewModel(
         }
         
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, errorMessage = null) }
+            _uiState.update { 
+                it.copy(
+                    isLoading = true, 
+                    errorMessage = null,
+                    loginInProgress = AuthFlow.NONE
+                ) 
+            }
             
             when (val result = authManager.resetPassword(state.email)) {
                 is AuthResult.Success -> {
                     _uiState.update { 
                         it.copy(
                             isLoading = false,
-                            successMessage = "Password reset email sent!"
+                            successMessage = "Password reset email sent!",
+                            loginInProgress = AuthFlow.NONE
                         ) 
                     }
                 }
@@ -139,7 +275,8 @@ class AuthViewModel(
                     _uiState.update { 
                         it.copy(
                             isLoading = false, 
-                            errorMessage = result.message
+                            errorMessage = result.message,
+                            loginInProgress = AuthFlow.NONE
                         ) 
                     }
                 }
@@ -149,6 +286,20 @@ class AuthViewModel(
     
     fun clearMessages() {
         _uiState.update { it.copy(errorMessage = null, successMessage = null) }
+    }
+    
+    fun reportError(message: String) {
+        _uiState.update { 
+            it.copy(
+                isLoading = false,
+                errorMessage = message,
+                loginInProgress = AuthFlow.NONE
+            ) 
+        }
+    }
+    
+    private suspend fun loadUserProfile() {
+        _userProfile.value = authManager.getUserProfile()
     }
     
     private fun validateEmail(email: String): Boolean {
@@ -167,5 +318,14 @@ data class AuthUiState(
     val displayNameError: String? = null,
     val confirmPasswordError: String? = null,
     val errorMessage: String? = null,
-    val successMessage: String? = null
+    val successMessage: String? = null,
+    val loginInProgress: AuthFlow = AuthFlow.NONE
 )
+
+enum class AuthFlow {
+    NONE,
+    EMAIL,
+    GOOGLE,
+    FACEBOOK,
+    GUEST
+}

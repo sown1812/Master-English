@@ -6,10 +6,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
@@ -21,13 +23,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 
 @Composable
-fun MultipleChoiceExercise(
-    exercise: Exercise.MultipleChoice,
+fun ListeningExercise(
+    exercise: Exercise.Listening,
+    onPlayNormal: () -> Unit,
+    onPlaySlow: () -> Unit,
     onAnswerSelected: (String) -> Unit,
     showResult: Boolean,
-    isCorrect: Boolean?,
-    onPlayNormal: () -> Unit,
-    onPlaySlow: () -> Unit
+    isCorrect: Boolean?
 ) {
     Column(
         modifier = Modifier
@@ -35,7 +37,6 @@ fun MultipleChoiceExercise(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Question Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -46,20 +47,13 @@ fun MultipleChoiceExercise(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(
-                    text = "Choose the correct answer",
+                    text = "Listen carefully",
                     style = MaterialTheme.typography.labelLarge,
                     color = Color(0xFF6B7280)
                 )
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
-                Text(
-                    text = exercise.question,
-                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                    color = Color(0xFF1F2937)
-                )
-                
-                Spacer(modifier = Modifier.height(12.dp))
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -68,31 +62,53 @@ fun MultipleChoiceExercise(
                         onClick = onPlayNormal,
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
                     ) {
+                        Icon(
+                            imageVector = Icons.Filled.Headphones,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text("Play", color = Color.White)
                     }
                     OutlinedButton(
                         onClick = onPlaySlow,
                         border = BorderStroke(1.dp, Color(0xFF6366F1))
                     ) {
+                        Icon(
+                            imageVector = Icons.Filled.Headphones,
+                            contentDescription = null,
+                            tint = Color(0xFF6366F1),
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
                         Text("Slow", color = Color(0xFF6366F1))
                     }
                 }
+                
+                Spacer(modifier = Modifier.height(12.dp))
+                
+                Text(
+                    text = exercise.question,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF1F2937),
+                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
+                )
             }
         }
         
-        // Options
         exercise.options.forEach { option ->
             val isSelected = exercise.selectedAnswer == option
-            val isCorrectAnswer = option == exercise.correctAnswer
+            val isCorrectAnswer = option.equals(exercise.correctAnswer, ignoreCase = true)
             
-            val backgroundColor = when {
+            val background = when {
                 showResult && isCorrectAnswer -> Color(0xFFDCFCE7)
                 showResult && isSelected && !isCorrectAnswer -> Color(0xFFFEE2E2)
                 isSelected -> Color(0xFFEEF2FF)
                 else -> Color.White
             }
             
-            val borderColor = when {
+            val border = when {
                 showResult && isCorrectAnswer -> Color(0xFF10B981)
                 showResult && isSelected && !isCorrectAnswer -> Color(0xFFEF4444)
                 isSelected -> Color(0xFF6366F1)
@@ -101,10 +117,10 @@ fun MultipleChoiceExercise(
             
             Card(
                 onClick = { if (!showResult) onAnswerSelected(option) },
-                modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.cardColors(containerColor = backgroundColor),
-                border = BorderStroke(2.dp, borderColor),
+                colors = CardDefaults.cardColors(containerColor = background),
+                modifier = Modifier.fillMaxWidth(),
+                border = BorderStroke(2.dp, border),
                 enabled = !showResult
             ) {
                 Row(
@@ -124,13 +140,13 @@ fun MultipleChoiceExercise(
                         if (isCorrectAnswer) {
                             Icon(
                                 imageVector = Icons.Filled.Check,
-                                contentDescription = "Correct",
+                                contentDescription = null,
                                 tint = Color(0xFF10B981)
                             )
                         } else if (isSelected) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
-                                contentDescription = "Wrong",
+                                contentDescription = null,
                                 tint = Color(0xFFEF4444)
                             )
                         }
@@ -139,7 +155,6 @@ fun MultipleChoiceExercise(
             }
         }
         
-        // Result Message
         if (showResult && isCorrect != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -160,22 +175,14 @@ fun MultipleChoiceExercise(
                     Spacer(modifier = Modifier.width(12.dp))
                     Column {
                         Text(
-                            text = if (isCorrect) "Correct!" else "Incorrect",
+                            text = if (isCorrect) "Great ear!" else "Listen again and try once more",
                             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                             color = if (isCorrect) Color(0xFF10B981) else Color(0xFFEF4444)
                         )
                         if (!isCorrect) {
                             Text(
-                                text = "Correct answer: ${exercise.correctAnswer}",
+                                text = "Answer: ${exercise.correctAnswer}",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF6B7280)
-                            )
-                        }
-                        exercise.word?.exampleSentence?.let { example ->
-                            Spacer(modifier = Modifier.height(4.dp))
-                            Text(
-                                text = "Example: $example",
-                                style = MaterialTheme.typography.bodySmall,
                                 color = Color(0xFF6B7280)
                             )
                         }
