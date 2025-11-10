@@ -20,5 +20,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Master"
-include(":app")
+include(":app", ":server")
  

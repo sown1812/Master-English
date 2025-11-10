@@ -15,6 +15,7 @@ navigationUiKtx = "2.9.5"
 composeBom = "2024.10.01"
 activityCompose = "1.9.3"
 lifecycleRuntimeCompose = "2.9.4"
+serialization = "2.0.21"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -44,3 +45,5 @@ androidx-compose-runtime-livedata = { group = "androidx.compose.runtime", name =
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-android = { id = "org.jetbrains.kotlin.android", version.ref = "kotlin" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+kotlin-serialization = { id = "org.jetbrains.kotlin.plugin.serialization", version.ref = "serialization" }

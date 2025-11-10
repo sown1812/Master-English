@@ -6,8 +6,7 @@
       <GradleProjectSettings>
         <option name="testRunner" value="CHOOSE_PER_TEST" />
         <option name="externalProjectPath" value="$PROJECT_DIR$" />
-        <option name="gradleHome" value="C:\Users\DPC00154\OneDrive\Desktop\gradle-8.7-bin\gradle-8.7" />
-        <option name="gradleJvm" value="17" />
+        <option name="gradleJvm" value="ms-17" />
         <option name="modules">
           <set>
             <option value="$PROJECT_DIR$" />

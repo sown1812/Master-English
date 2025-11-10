@@ -1,0 +1,6 @@
+D:\Master\server\src\main\kotlin\com\example\server\Database.kt
+D:\Master\server\src\main\kotlin\com\example\server\tables\Tables.kt
+D:\Master\server\src\main\kotlin\com\example\server\model\Dtos.kt
+D:\Master\server\src\main\kotlin\com\example\server\Application.kt
+D:\Master\server\src\main\kotlin\com\example\server\routes\LessonRoutes.kt
+D:\Master\server\src\main\kotlin\com\example\server\Migrations.kt
