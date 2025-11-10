@@ -53,7 +53,7 @@ object Words : Table("words") {
     val exampleTranslation = text("example_translation")
     val imageUrl = text("image_url").nullable()
     val audioUrl = text("audio_url").nullable()
-    val lessonId = integer("lesson_id").references(Lessons.id)
+    val lessonId = reference("lesson_id", Lessons.id)
     val difficulty = integer("difficulty")
     val category = text("category")
     val createdAt = long("created_at")
@@ -63,8 +63,8 @@ object Words : Table("words") {
 
 object Exercises : Table("exercises") {
     val id = integer("id").autoIncrement()
-    val lessonId = integer("lesson_id").references(Lessons.id)
-    val wordId = integer("word_id").nullable().references(Words.id)
+    val lessonId = reference("lesson_id", Lessons.id)
+    val wordId = reference("word_id", Words.id).nullable()
     val type = text("type")
     val question = text("question")
     val correctAnswer = text("correct_answer")
@@ -83,9 +83,9 @@ object Exercises : Table("exercises") {
 
 object UserProgress : Table("user_progress") {
     val id = integer("id").autoIncrement()
-    val userId = varchar("user_id", 64).references(Users.userId)
-    val lessonId = integer("lesson_id").references(Lessons.id)
-    val wordId = integer("word_id").nullable().references(Words.id)
+    val userId = reference("user_id", Users.userId)
+    val lessonId = reference("lesson_id", Lessons.id)
+    val wordId = reference("word_id", Words.id).nullable()
     val isCompleted = bool("is_completed")
     val completedAt = long("completed_at").nullable()
     val score = integer("score")
@@ -107,7 +107,7 @@ object UserProgress : Table("user_progress") {
 
 object Achievements : Table("achievements") {
     val id = integer("id").autoIncrement()
-    val userId = varchar("user_id", 64).references(Users.userId)
+    val userId = reference("user_id", Users.userId)
     val achievementType = text("achievement_type")
     val title = text("title")
     val description = text("description")
