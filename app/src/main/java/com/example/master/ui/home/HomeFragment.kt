@@ -18,76 +18,70 @@ import kotlinx.coroutines.launch
 
 class HomeFragment : Fragment() {
 
-	private var _binding: FragmentHomeBinding? = null
+    private var _binding: FragmentHomeBinding? = null
+    private val binding get() = _binding!!
 
-	// This property is only valid between onCreateView and
-	// onDestroyView.
-	private val binding get() = _binding!!
+    override fun onCreateView(
+        inflater: LayoutInflater,
+        container: ViewGroup?,
+        savedInstanceState: Bundle?
+    ): View {
+        val homeViewModel = ViewModelProvider(this).get(HomeViewModel::class.java)
 
-	override fun onCreateView(
-		inflater: LayoutInflater,
-		container: ViewGroup?,
-		savedInstanceState: Bundle?
-	): View {
-		val homeViewModel =
-			ViewModelProvider(this).get(HomeViewModel::class.java)
+        _binding = FragmentHomeBinding.inflate(inflater, container, false)
+        val root: View = binding.root
 
-		_binding = FragmentHomeBinding.inflate(inflater, container, false)
-		val root: View = binding.root
+        binding.composeHome.apply {
+            setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
+            setContent {
+                MaterialTheme {
+                    HomeRoute(homeViewModel = homeViewModel)
+                }
+            }
+        }
 
-		binding.composeHome.apply {
-			setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
-			setContent {
-				MaterialTheme {
-					HomeRoute(homeViewModel = homeViewModel)
-				}
-			}
-		}
-
-		// Observe navigation events and act accordingly
-		viewLifecycleOwner.lifecycleScope.launch {
-			viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-				homeViewModel.navigationEvents.collect { event ->
-					when (event) {
-						is HomeNavigationEvent.NavigateToPlay -> {
-							Toast.makeText(requireContext(), "Bắt đầu level ${event.level}", Toast.LENGTH_SHORT).show()
-							// Tạm thời chuyển tới Dashboard để mô phỏng màn chơi
-							findNavController().navigate(R.id.action_home_to_dashboard)
-						}
+        viewLifecycleOwner.lifecycleScope.launch {
+            viewLifecycleOwner.repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                homeViewModel.navigationEvents.collect { event ->
+                    when (event) {
+                        is HomeNavigationEvent.NavigateToPlay -> {
+                            Toast.makeText(requireContext(), "Bắt đầu level ${event.level}", Toast.LENGTH_SHORT).show()
+                            findNavController().navigate(R.id.action_home_to_dashboard)
+                        }
 						is HomeNavigationEvent.NavigateToDailyChallenge -> {
 							Toast.makeText(requireContext(), "Mở thử thách: ${event.challengeTitle}", Toast.LENGTH_SHORT).show()
-							findNavController().navigate(R.id.action_home_to_notifications)
+							findNavController().navigate(R.id.action_home_to_daily)
 						}
-						HomeNavigationEvent.NavigateToAchievements -> {
-							findNavController().navigate(R.id.action_home_to_dashboard)
-						}
-						HomeNavigationEvent.NavigateToStore -> {
-							findNavController().navigate(R.id.action_home_to_notifications)
-						}
-						is HomeNavigationEvent.NavigateToQuest -> {
-							Toast.makeText(requireContext(), "Quest: ${event.quest.title}", Toast.LENGTH_SHORT).show()
-							findNavController().navigate(R.id.action_home_to_dashboard)
-						}
-						is HomeNavigationEvent.NavigateToBooster -> {
-							Toast.makeText(requireContext(), "${event.booster.title}", Toast.LENGTH_SHORT).show()
-							findNavController().navigate(R.id.action_home_to_notifications)
-						}
-						is HomeNavigationEvent.ThemeApplied -> {
-							Toast.makeText(requireContext(), "Áp dụng chủ đề ${event.themeName}", Toast.LENGTH_SHORT).show()
-						}
-						is HomeNavigationEvent.ShowMessage -> {
-							Toast.makeText(requireContext(), event.message, Toast.LENGTH_SHORT).show()
-						}
-					}
-				}
-			}
-		}
+                        HomeNavigationEvent.NavigateToAchievements -> {
+                            findNavController().navigate(R.id.action_home_to_dashboard)
+                        }
+                        HomeNavigationEvent.NavigateToStore -> {
+                            findNavController().navigate(R.id.navigation_store)
+                        }
+                        is HomeNavigationEvent.NavigateToQuest -> {
+                            Toast.makeText(requireContext(), "Quest: ${event.quest.title}", Toast.LENGTH_SHORT).show()
+                            findNavController().navigate(R.id.navigation_store)
+                        }
+                        is HomeNavigationEvent.NavigateToBooster -> {
+                            Toast.makeText(requireContext(), event.booster.title, Toast.LENGTH_SHORT).show()
+                            findNavController().navigate(R.id.navigation_store)
+                        }
+                        is HomeNavigationEvent.ThemeApplied -> {
+                            Toast.makeText(requireContext(), "Áp dụng chủ đề ${event.themeName}", Toast.LENGTH_SHORT).show()
+                        }
+                        is HomeNavigationEvent.ShowMessage -> {
+                            Toast.makeText(requireContext(), event.message, Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
 
-		return root
-	}
+        return root
+    }
 
-	override fun onDestroyView() {
-		super.onDestroyView()
-		_binding = null
-	}
+    override fun onDestroyView() {
+        super.onDestroyView()
+        _binding = null
+    }
 }

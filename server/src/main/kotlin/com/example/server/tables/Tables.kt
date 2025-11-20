@@ -121,3 +121,31 @@ object Achievements : Table("achievements") {
     val createdAt = long("created_at")
     override val primaryKey = PrimaryKey(id)
 }
+
+object UserBoosters : Table("user_boosters") {
+    val id = integer("id").autoIncrement()
+    val userId = reference("user_id", Users.userId)
+    val boosterKey = text("booster_key")
+    val isOwned = bool("is_owned").default(false)
+    val updatedAt = long("updated_at")
+    override val primaryKey = PrimaryKey(id)
+}
+
+object UserQuests : Table("user_quests") {
+    val id = integer("id").autoIncrement()
+    val userId = reference("user_id", Users.userId)
+    val questKey = text("quest_key")
+    val isClaimed = bool("is_claimed").default(false)
+    val updatedAt = long("updated_at")
+    override val primaryKey = PrimaryKey(id)
+}
+
+object DailyChallenges : Table("daily_challenges") {
+    val id = integer("id").autoIncrement()
+    val userId = reference("user_id", Users.userId)
+    val status = text("status") // READY, IN_PROGRESS, COMPLETED, CLAIMED
+    val progress = integer("progress").default(0)
+    val target = integer("target").default(5)
+    val updatedAt = long("updated_at")
+    override val primaryKey = PrimaryKey(id)
+}

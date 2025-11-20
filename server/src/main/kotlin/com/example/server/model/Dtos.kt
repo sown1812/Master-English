@@ -114,3 +114,57 @@ data class ProgressDto(
     val createdAt: Long,
     val updatedAt: Long
 )
+
+@Serializable
+data class BoosterStateDto(
+    val boosterKey: String,
+    val isOwned: Boolean
+)
+
+@Serializable
+data class QuestStateDto(
+    val questKey: String,
+    val isClaimed: Boolean
+)
+
+@Serializable
+data class DailyChallengeStateDto(
+    val status: String,
+    val progress: Int,
+    val target: Int
+)
+
+@Serializable
+data class GameStateResponse(
+    val boosters: List<BoosterStateDto>,
+    val quests: List<QuestStateDto>,
+    val daily: DailyChallengeStateDto?
+)
+
+@Serializable
+data class UpdateBoosterRequest(
+    val boosterKey: String,
+    val owned: Boolean
+)
+
+@Serializable
+data class UpdateQuestRequest(
+    val questKey: String,
+    val claimed: Boolean
+)
+
+@Serializable
+data class UpdateDailyRequest(
+    val status: String,
+    val progress: Int,
+    val target: Int
+)
+
+@Serializable
+data class LeaderboardEntryDto(
+    val userId: String,
+    val displayName: String,
+    val totalXp: Int,
+    val coins: Int,
+    val streakDays: Int
+)

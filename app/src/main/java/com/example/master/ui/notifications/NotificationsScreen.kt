@@ -29,11 +29,11 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -243,7 +243,7 @@ private fun NotificationFeed(
 				onClick = { onNotificationClick(notification) }
 			)
 			if (index != notifications.lastIndex) {
-				Divider(color = Color(0xFFE5E0F5), thickness = 1.dp, modifier = Modifier.padding(horizontal = 8.dp))
+				HorizontalDivider(color = Color(0xFFE5E0F5), thickness = 1.dp, modifier = Modifier.padding(horizontal = 8.dp))
 			}
 		}
 	}

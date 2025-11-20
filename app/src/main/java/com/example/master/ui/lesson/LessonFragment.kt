@@ -160,7 +160,7 @@ class LessonFragment : Fragment() {
         val containsVietnameseDiacritics = text.any { it.code > 127 }
         return when {
             containsCJK -> Locale.CHINESE
-            containsVietnameseDiacritics -> Locale("vi")
+            containsVietnameseDiacritics -> Locale.forLanguageTag("vi")
             else -> Locale.US
         }
     }

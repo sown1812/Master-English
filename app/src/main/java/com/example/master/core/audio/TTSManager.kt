@@ -17,6 +17,7 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
 
     private var speechRate = 1.0f
     private var pitch = 1.0f
+    private var currentLocale: Locale = Locale.US
 
     override fun onInit(status: Int) {
         _isReady.value = status == TextToSpeech.SUCCESS
@@ -32,7 +33,8 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
             availability == TextToSpeech.LANG_COUNTRY_AVAILABLE ||
             availability == TextToSpeech.LANG_COUNTRY_VAR_AVAILABLE
         ) {
-            tts.language = locale
+            tts.setLanguage(locale)
+            currentLocale = locale
             true
         } else {
             false
@@ -55,13 +57,13 @@ class TTSManager(context: Context) : TextToSpeech.OnInitListener {
 
     fun speak(
         text: String,
-        language: Locale = tts.language ?: Locale.US,
+        language: Locale = currentLocale,
         speed: Float? = null,
         pitchFactor: Float? = null,
         queueMode: Int = TextToSpeech.QUEUE_FLUSH
     ) {
         if (!_isReady.value) return
-        if (tts.language != language) {
+        if (currentLocale != language) {
             setLanguage(language)
         }
         tts.setSpeechRate((speed ?: speechRate).coerceIn(0.5f, 2.0f))

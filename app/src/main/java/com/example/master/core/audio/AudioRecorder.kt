@@ -7,15 +7,16 @@ import java.io.File
 /**
  * Basic audio recorder for capturing user pronunciation exercises.
  */
-class AudioRecorder(@Suppress("UNUSED_PARAMETER") context: Context) {
+class AudioRecorder(context: Context) {
     
+    private val appContext = context.applicationContext
     private var recorder: MediaRecorder? = null
     private var outputFile: File? = null
 
     fun startRecording(file: File) {
         stopRecording()
         outputFile = file
-        recorder = MediaRecorder().apply {
+        recorder = MediaRecorder(appContext).apply {
             setAudioSource(MediaRecorder.AudioSource.MIC)
             setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
             setAudioEncoder(MediaRecorder.AudioEncoder.AAC)

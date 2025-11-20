@@ -11,6 +11,7 @@ dependencies {
     implementation("io.ktor:ktor-server-core:2.3.12")
     implementation("io.ktor:ktor-server-content-negotiation:2.3.12")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
+    implementation("io.ktor:ktor-server-status-pages:2.3.12")
     implementation("ch.qos.logback:logback-classic:1.5.12")
 
     // Config, DB
@@ -23,6 +24,11 @@ dependencies {
 
     // Flyway for migrations
     implementation("org.flywaydb:flyway-core:10.18.2")
+
+    // Tests
+    testImplementation(kotlin("test"))
+    testImplementation("io.ktor:ktor-server-tests-jvm:2.3.12")
+    testImplementation("com.h2database:h2:2.2.224")
 }
 
 application {

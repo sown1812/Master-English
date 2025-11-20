@@ -8,6 +8,7 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.ViewModelProvider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.ViewCompositionStrategy
+import com.example.master.MasterApplication
 import com.example.master.databinding.FragmentDashboardBinding
 
 class DashboardFragment : Fragment() {
@@ -23,8 +24,10 @@ class DashboardFragment : Fragment() {
         container: ViewGroup?,
         savedInstanceState: Bundle?
     ): View {
+        val app = requireActivity().application as MasterApplication
+        val factory = DashboardViewModelFactory(app.repository, app.authManager, app.apiService)
         val dashboardViewModel =
-            ViewModelProvider(this).get(DashboardViewModel::class.java)
+            ViewModelProvider(this, factory).get(DashboardViewModel::class.java)
 
         _binding = FragmentDashboardBinding.inflate(inflater, container, false)
         val root: View = binding.root

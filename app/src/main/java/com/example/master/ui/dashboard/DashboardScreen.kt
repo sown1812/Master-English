@@ -17,16 +17,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Wysiwyg
 import androidx.compose.material.icons.filled.AutoGraph
 import androidx.compose.material.icons.filled.Bolt
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Timeline
-import androidx.compose.material.icons.filled.Wysiwyg
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -49,14 +50,42 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun DashboardRoute(viewModel: DashboardViewModel) {
     val state by viewModel.uiState
-    DashboardScreen(state = state)
+    DashboardScreen(state = state, onRefreshLeaderboard = { viewModel.refreshLeaderboard() })
 }
 
 @Composable
 fun DashboardScreen(
-    state: DashboardUiState,
+    state: DashboardScreenState,
+    onRefreshLeaderboard: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    if (state.isLoading) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            CircularProgressIndicator()
+        }
+        return
+    }
+
+    if (state.errorMessage != null && state.data == null) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = state.errorMessage,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+        return
+    }
+
+    val data = state.data ?: return
+
     Box(
         modifier = modifier
             .fillMaxSize()
@@ -72,19 +101,24 @@ fun DashboardScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 20.dp, vertical = 24.dp)
         ) {
-            HeaderSection(state)
+            HeaderSection(data)
             Spacer(modifier = Modifier.height(20.dp))
-            SummaryRow(state)
+            SummaryRow(data)
             Spacer(modifier = Modifier.height(20.dp))
-            XpProgressCard(state.xpProgress)
+            XpProgressCard(data.xpProgress)
             Spacer(modifier = Modifier.height(20.dp))
-            WeeklyProgressCard(state.weeklyProgress)
+            WeeklyProgressCard(data.weeklyProgress)
             Spacer(modifier = Modifier.height(20.dp))
-            AchievementsSection(state.achievements)
+            AchievementsSection(data.achievements)
             Spacer(modifier = Modifier.height(20.dp))
-            ChallengesSection(state.upcomingChallenges)
+            ChallengesSection(data.upcomingChallenges)
             Spacer(modifier = Modifier.height(20.dp))
-            LeaderboardSection(state.leaderboard)
+            LeaderboardSection(
+                leaderboard = data.leaderboard,
+                isLoading = state.leaderboardLoading,
+                error = state.errorMessage,
+                onRefresh = onRefreshLeaderboard
+            )
             Spacer(modifier = Modifier.height(32.dp))
         }
     }
@@ -114,7 +148,7 @@ private fun SummaryRow(state: DashboardUiState) {
     ) {
         SummaryCard(
             modifier = Modifier.weight(1f),
-            icon = Icons.Filled.Wysiwyg,
+            icon = Icons.AutoMirrored.Filled.Wysiwyg,
             iconTint = Color(0xFF815AC0),
             label = "Từ vựng",
             value = state.totalWordsLearned.toString()
@@ -217,12 +251,12 @@ private fun XpProgressCard(progress: XpProgress) {
                 Text(
                     text = progress.levelLabel,
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color(0xFF3D2C7E)
+                    color = Color(0xFF6C5AE6)
                 )
                 Text(
-                    text = "${progress.currentXp} / ${progress.nextLevelXp} XP",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6E56A3)
+                    text = "${progress.currentXp}/${progress.nextLevelXp} XP",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color(0xFF6C5AE6)
                 )
             }
         }
@@ -230,14 +264,14 @@ private fun XpProgressCard(progress: XpProgress) {
 }
 
 @Composable
-private fun WeeklyProgressCard(progress: List<DailyProgress>) {
+private fun WeeklyProgressCard(weekly: List<DailyProgress>) {
     Card(
         shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.92f))
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.9f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -245,51 +279,41 @@ private fun WeeklyProgressCard(progress: List<DailyProgress>) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Hoạt động trong tuần",
+                    text = "Weekly Progress",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color(0xFF40286A)
+                    color = Color(0xFF3A236B)
                 )
-                Icon(
-                    imageVector = Icons.Filled.Timeline,
-                    contentDescription = null,
-                    tint = Color(0xFF815AC0)
+                Text(
+                    text = "${weekly.sumOf { it.xpEarned }} XP",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color(0xFF6C5AE6)
                 )
             }
             Row(
-                horizontalArrangement = Arrangement.spacedBy(14.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Bottom
             ) {
-                progress.forEach { day ->
+                weekly.forEach { day ->
                     Column(
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
-                        modifier = Modifier.weight(1f)
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Box(
                             modifier = Modifier
                                 .width(24.dp)
-                                .height(120.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color(0xFFEDE8FF)),
-                            contentAlignment = Alignment.BottomCenter
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .width(24.dp)
-                                    .height((120.dp * day.completion).coerceAtLeast(12.dp))
-                                    .clip(RoundedCornerShape(12.dp))
-                                    .background(Color(0xFF6C5AE6))
-                            )
-                        }
-                        Text(
-                            text = day.label,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color(0xFF6E56A3)
+                                .height((80 * day.completion).coerceAtLeast(6f).dp)
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    Brush.verticalGradient(
+                                        colors = listOf(Color(0xFF6C5AE6), Color(0xFF9B8BFF))
+                                    )
+                                )
                         )
                         Text(
-                            text = "+${day.xpEarned} XP",
+                            text = day.label,
                             style = MaterialTheme.typography.labelSmall,
-                            color = Color(0xFF9C8BD4)
+                            color = Color(0xFF6E56A3)
                         )
                     }
                 }
@@ -300,69 +324,53 @@ private fun WeeklyProgressCard(progress: List<DailyProgress>) {
 
 @Composable
 private fun AchievementsSection(achievements: List<AchievementSummary>) {
-    Column(
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = "Thành tựu",
+            text = "Achievements",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color(0xFF40286A)
         )
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             achievements.forEach { achievement ->
-                AchievementCard(achievement)
-            }
-        }
-    }
-}
-
-@Composable
-private fun AchievementCard(achievement: AchievementSummary) {
-    Card(
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFF3D6))
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Surface(
-                    shape = CircleShape,
-                    color = Color(0xFFFFC857)
+                Card(
+                    shape = RoundedCornerShape(18.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
                 ) {
-                    Icon(
-                        imageVector = Icons.Filled.EmojiEvents,
-                        contentDescription = null,
-                        tint = Color.White,
-                        modifier = Modifier.padding(10.dp)
-                    )
-                }
-                Column {
-                    Text(
-                        text = achievement.title,
-                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFF442C66)
-                    )
-                    Text(
-                        text = "${achievement.completedCount}/${achievement.totalCount} hoàn thành",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF7A639F)
-                    )
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text(
+                                text = achievement.title,
+                                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                                color = Color(0xFF3A236B)
+                            )
+                            Text(
+                                text = "${(achievement.progress * 100).toInt()}% • ${achievement.completedCount}/${achievement.totalCount}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = Color(0xFF6E56A3)
+                            )
+                            LinearProgressIndicator(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(10.dp)
+                                    .clip(RoundedCornerShape(8.dp)),
+                                progress = { achievement.progress },
+                                trackColor = Color(0xFFE9DFFF),
+                                color = Color(0xFF6C5AE6)
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Filled.EmojiEvents,
+                            contentDescription = null,
+                            tint = Color(0xFFFFC857),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
-            LinearProgressIndicator(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(10.dp)
-                    .clip(RoundedCornerShape(999.dp)),
-                progress = { achievement.progress.coerceIn(0f, 1f) },
-                trackColor = Color(0xFFFFE7B8),
-                color = Color(0xFFFF9F1C)
-            )
         }
     }
 }
@@ -371,68 +379,79 @@ private fun AchievementCard(achievement: AchievementSummary) {
 private fun ChallengesSection(challenges: List<DashboardChallenge>) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = "Thử thách sắp tới",
+            text = "Upcoming Challenges",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color(0xFF40286A)
         )
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            challenges.forEach { challenge ->
-                ChallengeCard(challenge)
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChallengeCard(challenge: DashboardChallenge) {
-    Card(
-        shape = RoundedCornerShape(22.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFE0F7FA))
-    ) {
-        Column(
-            modifier = Modifier.padding(horizontal = 18.dp, vertical = 18.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = challenge.title,
-                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                color = Color(0xFF1E5A7A)
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+        challenges.forEach { challenge ->
+            Card(
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
             ) {
-                Text(
-                    text = "Phần thưởng: ${challenge.rewardCoins} coins",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF2C6E8F)
-                )
-                Button(
-                    onClick = { },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88A8))
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text(text = "Tham gia", fontWeight = FontWeight.Bold)
+                    Text(
+                        text = challenge.title,
+                        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                        color = Color(0xFF234163)
+                    )
+                    Text(
+                        text = "Phần thưởng: ${challenge.rewardCoins} coins",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF2C6E8F)
+                    )
+                    Text(
+                        text = "Thời gian còn lại: ${challenge.timeRemaining}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = Color(0xFF5597B4)
+                    )
                 }
             }
-            Text(
-                text = "Thời gian còn lại: ${challenge.timeRemaining}",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF5597B4)
-            )
         }
     }
 }
 
 @Composable
-private fun LeaderboardSection(leaderboard: List<FriendProgress>) {
+private fun LeaderboardSection(
+    leaderboard: List<FriendProgress>,
+    isLoading: Boolean,
+    error: String?,
+    onRefresh: () -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = "Bảng xếp hạng bạn bè",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color(0xFF40286A)
         )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            when {
+                isLoading -> Text(
+                    text = "Đang tải leaderboard...",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF6B7280)
+                )
+                error != null -> Text(
+                    text = error,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                else -> Spacer(modifier = Modifier.width(8.dp))
+            }
+            Button(
+                onClick = onRefresh,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C5AE6)),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(text = "Làm mới", color = Color.White, style = MaterialTheme.typography.labelLarge)
+            }
+        }
         Card(
             shape = RoundedCornerShape(24.dp),
             colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.95f))
@@ -441,15 +460,21 @@ private fun LeaderboardSection(leaderboard: List<FriendProgress>) {
                 modifier = Modifier.padding(horizontal = 20.dp, vertical = 18.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                leaderboard.forEachIndexed { index, friend ->
-                    LeaderboardRow(rank = index + 1, friend = friend)
-                    if (index != leaderboard.lastIndex) {
-                        Spacer(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(Color(0xFFE7E0FF))
-                        )
+                if (isLoading && leaderboard.isEmpty()) {
+                    repeat(3) { idx ->
+                        LeaderboardSkeletonRow(rank = idx + 1)
+                    }
+                } else {
+                    leaderboard.forEachIndexed { index, friend ->
+                        LeaderboardRow(rank = index + 1, friend = friend)
+                        if (index != leaderboard.lastIndex) {
+                            Spacer(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(1.dp)
+                                    .background(Color(0xFFE7E0FF))
+                            )
+                        }
                     }
                 }
             }
@@ -510,8 +535,90 @@ private fun LeaderboardRow(rank: Int, friend: FriendProgress) {
     }
 }
 
+@Composable
+private fun LeaderboardSkeletonRow(rank: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(
+                text = rank.toString(),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFF6E56A3)
+            )
+            Surface(
+                modifier = Modifier.size(40.dp),
+                shape = CircleShape,
+                color = Color(0xFFE7E0FF)
+            ) {}
+            Column {
+                Box(
+                    modifier = Modifier
+                        .height(14.dp)
+                        .width(80.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFFE7E0FF))
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Box(
+                    modifier = Modifier
+                        .height(10.dp)
+                        .width(60.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFFE7E0FF))
+                )
+            }
+        }
+        Box(
+            modifier = Modifier
+                .height(12.dp)
+                .width(24.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(Color(0xFFE7E0FF))
+        )
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun DashboardScreenPreview() {
-    DashboardScreen(state = DashboardUiState.sample())
+    val sampleData = DashboardUiState(
+        totalWordsLearned = 1280,
+        totalCoins = 2450,
+        streakDays = 18,
+        levelsCompleted = 42,
+        weeklyProgress = listOf(
+            DailyProgress("Mon", 0.9f, 45),
+            DailyProgress("Tue", 0.6f, 30),
+            DailyProgress("Wed", 1f, 50),
+            DailyProgress("Thu", 0.4f, 22),
+            DailyProgress("Fri", 0.7f, 35),
+            DailyProgress("Sat", 0.5f, 25),
+            DailyProgress("Sun", 0.8f, 40)
+        ),
+        xpProgress = XpProgress(currentXp = 3400, nextLevelXp = 4000, levelLabel = "Level 40"),
+        achievements = listOf(
+            AchievementSummary(title = "Perfect Run", progress = 0.8f, completedCount = 4, totalCount = 5),
+            AchievementSummary(title = "Grammar Guru", progress = 0.45f, completedCount = 9, totalCount = 20)
+        ),
+        upcomingChallenges = listOf(
+            DashboardChallenge(title = "Weekend Marathon", rewardCoins = 150, timeRemaining = "18:23:10"),
+            DashboardChallenge(title = "Streak Hero", rewardCoins = 200, timeRemaining = "2d 5h")
+        ),
+        leaderboard = listOf(
+            FriendProgress(name = "Tuan", avatarInitial = "T", score = 5120, trend = +2),
+            FriendProgress(name = "Lan", avatarInitial = "L", score = 5015, trend = -1),
+            FriendProgress(name = "Minh", avatarInitial = "M", score = 4880, trend = +4)
+        )
+    )
+    DashboardScreen(
+        state = DashboardScreenState(
+            isLoading = false,
+            data = sampleData,
+            leaderboardLoading = false
+        ),
+        onRefreshLeaderboard = {}
+    )
 }

@@ -2,11 +2,11 @@ package com.example.master
 
 import android.os.Bundle
 import android.view.View
-import com.google.android.material.bottomnavigation.BottomNavigationView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.navigation.findNavController
 import androidx.navigation.ui.setupWithNavController
 import com.example.master.databinding.ActivityMainBinding
+import com.google.android.material.bottomnavigation.BottomNavigationView
 
 class MainActivity : AppCompatActivity() {
 
@@ -22,7 +22,7 @@ class MainActivity : AppCompatActivity() {
 
         val navView: BottomNavigationView = binding.navView
         val navController = findNavController(R.id.nav_host_fragment_activity_main)
-        
+
         // Hide/Show bottom navigation based on destination
         navController.addOnDestinationChangedListener { _, destination, _ ->
             when (destination.id) {
@@ -34,7 +34,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
-        
+
         navView.setupWithNavController(navController)
     }
 }
