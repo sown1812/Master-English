@@ -6,10 +6,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.master.auth.AuthManager
 import com.example.master.data.local.entity.AchievementEntity
-import com.example.master.data.local.entity.UserEntity
 import com.example.master.data.local.entity.UserProgressEntity
 import com.example.master.data.repository.LearningRepository
 import com.example.master.network.ApiService
+import com.example.master.network.LeaderboardEntryRemote
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
@@ -33,13 +33,17 @@ class DashboardViewModel @Inject constructor(
         loadDashboard()
     }
 
+    fun refreshLeaderboard() {
+        viewModelScope.launch { fetchLeaderboard() }
+    }
+
     private fun loadDashboard() {
         viewModelScope.launch {
             val userId = authManager.getCurrentUserId()
             if (userId.isNullOrBlank()) {
                 _uiState.value = DashboardScreenState(
                     isLoading = false,
-                    errorMessage = "Chưa đăng nhập"
+                    errorMessage = "Chua dang nh?p"
                 )
                 return@launch
             }
@@ -48,123 +52,86 @@ class DashboardViewModel @Inject constructor(
                 repository.getUserProgress(userId),
                 repository.getUserAchievements(userId),
                 repository.getCurrentUser()
-            ) { progress, achievements, user ->
-                Triple(progress, achievements, user)
-            }.collect { (progress, achievements, user) ->
-                val stats = repository.getUserStatistics(userId)
-                val weekly = buildWeeklyProgress(progress)
-                val achievementsSummary = mapAchievements(achievements)
-                val xpProgress = XpProgress(
-                    currentXp = stats.totalXP,
-                    nextLevelXp = (stats.level * 100).coerceAtLeast(stats.totalXP + 100),
-                    levelLabel = "Level ${stats.level}"
-                )
-                val leaderboard = buildLeaderboard(
-                    currentUserName = user?.displayName ?: "You",
-                    currentScore = stats.totalXP
-                )
-                if (!leaderboardLoaded) {
-                    viewModelScope.launch {
-                        fetchLeaderboard()
+            ) { progress, achievements, user -> Triple(progress, achievements, user) }
+                .collect { (progress, achievements, user) ->
+                    val stats = repository.getUserStatistics(userId)
+                    val weekly = buildWeeklyProgress(progress)
+                    val achievementsSummary = mapAchievements(achievements)
+                    val xpProgress = XpProgress(
+                        currentXp = stats.totalXP,
+                        nextLevelXp = (stats.level * 100).coerceAtLeast(stats.totalXP + 100),
+                        levelLabel = "Level ${stats.level}"
+                    )
+                    val leaderboard = buildLeaderboard(
+                        currentUserName = user?.displayName ?: "You",
+                        currentScore = stats.totalXP
+                    )
+                    if (!leaderboardLoaded) {
+                        viewModelScope.launch { fetchLeaderboard() }
                     }
+                    val ui = DashboardUiState(
+                        totalWordsLearned = stats.wordsLearned,
+                        totalCoins = stats.coins,
+                        streakDays = stats.streakDays,
+                        levelsCompleted = stats.lessonsCompleted,
+                        weeklyProgress = weekly,
+                        xpProgress = xpProgress,
+                        achievements = achievementsSummary,
+                        upcomingChallenges = buildUpcomingChallenges(),
+                        leaderboard = leaderboard
+                    )
+                    _uiState.value = DashboardScreenState(
+                        isLoading = false,
+                        data = ui
+                    )
                 }
-                val ui = DashboardUiState(
-                    totalWordsLearned = stats.wordsLearned,
-                    totalCoins = stats.coins,
-                    streakDays = stats.streakDays,
-                    levelsCompleted = stats.lessonsCompleted,
-                    weeklyProgress = weekly,
-                    xpProgress = xpProgress,
-                    achievements = achievementsSummary,
-                    upcomingChallenges = buildUpcomingChallenges(),
-                    leaderboard = leaderboard
-                )
-                _uiState.value = DashboardScreenState(
-                    isLoading = false,
-                    errorMessage = null,
-                    data = ui
-                )
-            }
         }
     }
 
     private suspend fun fetchLeaderboard() {
-        val userId = authManager.getCurrentUserId() ?: return
-        _uiState.value = _uiState.value.copy(leaderboardLoading = true)
-        runCatching {
-            api.getLeaderboard(20)
-        }.onSuccess { remote ->
-            val mapped = remote.map {
-                FriendProgress(
-                    name = it.displayName.ifBlank { "User" },
-                    avatarInitial = it.displayName.firstOrNull()?.uppercaseChar()?.toString() ?: "U",
-                    score = it.totalXp,
-                    trend = 0
+        runCatching { api.getLeaderboard() }
+            .onSuccess { entries ->
+                val current = _uiState.value.data
+                _uiState.value = _uiState.value.copy(
+                    data = current?.copy(leaderboard = entries.map { it.toUi() }),
+                    isLoading = false
                 )
+                leaderboardLoaded = true
             }
-            _uiState.value = _uiState.value.copy(
-                data = _uiState.value.data?.copy(leaderboard = mapped),
-                leaderboardLoading = false
-            )
-            leaderboardLoaded = true
-        }.onFailure {
-            _uiState.value = _uiState.value.copy(
-                leaderboardLoading = false,
-                errorMessage = _uiState.value.errorMessage ?: "Không tải được leaderboard"
-            )
-        }
     }
 
-    fun refreshLeaderboard() {
-        viewModelScope.launch {
-            fetchLeaderboard()
+    private fun mapAchievements(list: List<AchievementEntity>): List<AchievementSummary> {
+        return list.map { achievement ->
+            val ratio = (achievement.progress.toFloat() / achievement.target).coerceIn(0f, 1f)
+            AchievementSummary(
+                title = achievement.title,
+                progress = ratio,
+                completedCount = if (achievement.isUnlocked) 1 else 0,
+                totalCount = 1
+            )
         }
     }
 
     private fun buildWeeklyProgress(progress: List<UserProgressEntity>): List<DailyProgress> {
-        if (progress.isEmpty()) {
-            return defaultWeeklyProgress()
-        }
-
+        if (progress.isEmpty()) return defaultWeeklyProgress()
         val zone = ZoneId.systemDefault()
-        val today = LocalDate.now(zone)
-        val byDate = progress.groupBy {
-            Instant.ofEpochMilli(it.updatedAt).atZone(zone).toLocalDate()
-        }
-
-        return (6 downTo 0).map { offset ->
-            val date = today.minusDays(offset.toLong())
-            val items = byDate[date].orEmpty()
-            val xp = items.sumOf { it.xpEarned }
-            val completion = (xp / 100f).coerceIn(0f, 1f)
+        val now = Instant.now().atZone(zone).toLocalDate()
+        val days = (0..6).map { now.minusDays((6 - it).toLong()) }
+        return days.map { day ->
+            val dayProgress = progress.filter { p ->
+                p.completedAt?.let { Instant.ofEpochMilli(it).atZone(zone).toLocalDate() == day } == true
+            }
+            val completion = (dayProgress.size / 5f).coerceIn(0f, 1f)
+            val xp = dayProgress.sumOf { it.xpEarned }
             DailyProgress(
-                label = date.dayOfWeek.name.take(3).lowercase().replaceFirstChar { c -> c.uppercase() },
+                label = day.dayOfWeek.name.take(3).lowercase().replaceFirstChar { it.uppercase() },
                 completion = completion,
                 xpEarned = xp
             )
         }
     }
 
-    private fun mapAchievements(data: List<AchievementEntity>): List<AchievementSummary> {
-        if (data.isEmpty()) return emptyList()
-        return data
-            .sortedBy { it.isUnlocked.not() } // ưu tiên đã mở khóa
-            .take(4)
-            .map {
-                val progressRatio = if (it.isUnlocked) 1f else (it.progress.toFloat() / it.target).coerceIn(0f, 1f)
-                AchievementSummary(
-                    title = it.title,
-                    progress = progressRatio,
-                    completedCount = if (it.isUnlocked) it.target else it.progress,
-                    totalCount = it.target
-                )
-            }
-    }
-
-    private fun buildLeaderboard(
-        currentUserName: String,
-        currentScore: Int
-    ): List<FriendProgress> {
+    private fun buildLeaderboard(currentUserName: String, currentScore: Int): List<FriendProgress> {
         val peers = listOf(
             FriendProgress("Lan", "L", currentScore - 40, trend = +1),
             FriendProgress("Minh", "M", currentScore - 120, trend = +3),
@@ -192,17 +159,13 @@ class DashboardViewModel @Inject constructor(
     }
 }
 
-class DashboardViewModelFactory(
-    private val repository: LearningRepository,
-    private val authManager: AuthManager,
-    private val api: ApiService
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(DashboardViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return DashboardViewModel(repository, authManager, api) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
-    }
+private fun LeaderboardEntryRemote.toUi(): FriendProgress {
+    val safeName = displayName.ifBlank { "Learner" }
+    val initial = safeName.firstOrNull()?.uppercaseChar()?.toString() ?: "L"
+    return FriendProgress(
+        name = safeName,
+        avatarInitial = initial,
+        score = totalXp,
+        trend = 0
+    )
 }
-

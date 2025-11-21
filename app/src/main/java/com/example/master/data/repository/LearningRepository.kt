@@ -5,9 +5,7 @@ import com.example.master.core.user.toUserProfile
 import com.example.master.data.local.AppDatabase
 import com.example.master.data.local.entity.*
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 

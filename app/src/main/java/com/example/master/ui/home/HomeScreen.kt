@@ -143,12 +143,6 @@ fun HomeScreen(
             BoosterCarousel(boosters = state.boosters, onBoosterClick = onBoosterClick)
             ThemeSelector(themes = state.themes, onThemeClick = onThemeClick)
         }
-        BottomNavigationBar(
-            onStoreClick = onOpenStore,
-            onHomeClick = {},
-            onPlayClick = onPlayClick,
-            onAchievementsClick = onOpenAchievements
-        )
     }
 }
 

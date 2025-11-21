@@ -41,7 +41,7 @@ data class QuestUi(
 )
 
 data class DailyChallengeUi(
-    val title: String = "Thử thách hằng ngày",
+    val title: String = "Th? th�ch h?ng ng�y",
     val rewardCoins: Int = 120,
     val status: ChallengeStatus = ChallengeStatus.READY,
     val progress: Int = 0,
@@ -62,20 +62,20 @@ class StoreViewModel @Inject constructor(
 
     private val baseBoosters = listOf(
         BoosterItem(
-            title = "Hint từ vựng",
-            description = "Hiển thị gợi ý nghĩa tiếng Việt cho 1 câu hỏi",
+            title = "Hint t? v?ng",
+            description = "Hi?n th? g?i � nghia ti?ng Vi?t cho 1 c�u h?i",
             costCoins = 30,
             isOwned = true
         ),
         BoosterItem(
             title = "Double XP",
-            description = "Nhận gấp đôi điểm cho level kế tiếp",
+            description = "Nh?n g?p d�i di?m cho level k? ti?p",
             costCoins = 120,
             isOwned = false
         ),
         BoosterItem(
-            title = "Skip câu",
-            description = "Bỏ qua 1 câu hỏi khó",
+            title = "Skip c�u",
+            description = "B? qua 1 c�u h?i kh�",
             costCoins = 60,
             isOwned = false
         )
@@ -83,24 +83,24 @@ class StoreViewModel @Inject constructor(
 
     private val baseQuests = listOf(
         QuestUi(
-            title = "Ăn liền 15 tiếng tắc quái",
-            description = "Hoàn thành 3 level độ khó Medium",
+            title = "An li?n 15 ti?ng t?c qu�i",
+            description = "Ho�n th�nh 3 level d? kh� Medium",
             rewardCoins = 80,
             progress = 0.6f,
             stepsLabel = "3/5",
             isCompleted = false
         ),
         QuestUi(
-            title = "Làm thử thách từ vựng hôm nay",
-            description = "Đạt điểm tối thiểu 40/50",
+            title = "L�m th? th�ch t? v?ng h�m nay",
+            description = "�?t di?m t?i thi?u 40/50",
             rewardCoins = 120,
             progress = 1f,
             stepsLabel = "4/4",
             isCompleted = true
         ),
         QuestUi(
-            title = "Chia sẻ streak",
-            description = "Chia sẻ kết quả streak lên mạng xã hội",
+            title = "Chia s? streak",
+            description = "Chia s? k?t qu? streak l�n m?ng x� h?i",
             rewardCoins = 40,
             progress = 1f,
             stepsLabel = "1/1",
@@ -118,7 +118,7 @@ class StoreViewModel @Inject constructor(
         viewModelScope.launch {
             val userId = authManager.getCurrentUserId()
             if (userId == null) {
-                _uiState.update { it.copy(isLoading = false, message = "Chưa đăng nhập") }
+                _uiState.update { it.copy(isLoading = false, message = "Chua dang nh?p") }
                 return@launch
             }
             repository.getUserProfile(userId).collect { profile ->
@@ -180,7 +180,7 @@ class StoreViewModel @Inject constructor(
                 resp.quests.forEach { if (it.isClaimed) gameStateStore.setQuestClaimed(it.questKey) }
                 _uiState.update { it.copy(message = null) }
             }.onFailure {
-                _uiState.update { it.copy(message = "Không đồng bộ được state backend (offline?)") }
+                _uiState.update { it.copy(message = "Kh�ng d?ng b? du?c state backend (offline?)") }
             }
         }
     }
@@ -195,7 +195,7 @@ class StoreViewModel @Inject constructor(
                 runCatching { action() }
                     .onSuccess { iterator.remove() }
                     .onFailure {
-                        // giữ lại action để retry lần sau
+                        // gi? l?i action d? retry l?n sau
                     }
             }
             _uiState.update { it.copy(isSyncing = false) }
@@ -204,17 +204,17 @@ class StoreViewModel @Inject constructor(
 
     fun purchaseBooster(title: String) {
         val userId = authManager.getCurrentUserId() ?: run {
-            _uiState.update { it.copy(message = "Chưa đăng nhập") }
+            _uiState.update { it.copy(message = "Chua dang nh?p") }
             return
         }
         val state = _uiState.value
         val booster = state.boosters.find { it.title == title } ?: return
         if (booster.isOwned) {
-            _uiState.update { it.copy(message = "Bạn đã sở hữu ${booster.title}") }
+            _uiState.update { it.copy(message = "B?n d� s? h?u ${booster.title}") }
             return
         }
         if (state.coins < booster.costCoins) {
-            _uiState.update { it.copy(message = "Không đủ coins") }
+            _uiState.update { it.copy(message = "Kh�ng d? coins") }
             return
         }
 
@@ -228,7 +228,7 @@ class StoreViewModel @Inject constructor(
                     boosters = it.boosters.map { b ->
                         if (b.title == title) b.copy(isOwned = true) else b
                     },
-                    message = "Đã mua ${booster.title}"
+                    message = "�� mua ${booster.title}"
                 )
             }
         }
@@ -236,12 +236,12 @@ class StoreViewModel @Inject constructor(
 
     fun claimQuest(title: String) {
         val userId = authManager.getCurrentUserId() ?: run {
-            _uiState.update { it.copy(message = "Chưa đăng nhập") }
+            _uiState.update { it.copy(message = "Chua dang nh?p") }
             return
         }
         val quest = _uiState.value.quests.find { it.title == title } ?: return
         if (!quest.isCompleted || quest.isClaimed) {
-            _uiState.update { it.copy(message = "Quest chưa hoàn thành hoặc đã nhận thưởng") }
+            _uiState.update { it.copy(message = "Quest chua ho�n th�nh ho?c d� nh?n thu?ng") }
             return
         }
         viewModelScope.launch {
@@ -254,7 +254,7 @@ class StoreViewModel @Inject constructor(
                     quests = it.quests.map { q ->
                         if (q.title == title) q.copy(isClaimed = true) else q
                     },
-                    message = "Nhận ${quest.rewardCoins} coins từ quest"
+                    message = "Nh?n ${quest.rewardCoins} coins t? quest"
                 )
             }
         }
@@ -281,12 +281,12 @@ class StoreViewModel @Inject constructor(
 
     fun submitDailyChallenge(score: Int) {
         val userId = authManager.getCurrentUserId() ?: run {
-            _uiState.update { it.copy(message = "Chưa đăng nhập") }
+            _uiState.update { it.copy(message = "Chua dang nh?p") }
             return
         }
         val dc = _uiState.value.dailyChallenge
         if (dc.status != ChallengeStatus.IN_PROGRESS) {
-            _uiState.update { it.copy(message = "Chưa bắt đầu thử thách") }
+            _uiState.update { it.copy(message = "Chua b?t d?u th? th�ch") }
             return
         }
         viewModelScope.launch {
@@ -299,7 +299,7 @@ class StoreViewModel @Inject constructor(
             _uiState.update {
                 it.copy(
                     dailyChallenge = dc.copy(status = ChallengeStatus.CLAIMED, progress = dc.target),
-                    message = "Nhận ${dc.rewardCoins} coins từ thử thách"
+                    message = "Nh?n ${dc.rewardCoins} coins t? th? th�ch"
                 )
             }
         }
@@ -307,20 +307,5 @@ class StoreViewModel @Inject constructor(
 
     fun clearMessage() {
         _uiState.update { it.copy(message = null) }
-    }
-}
-
-class StoreViewModelFactory(
-    private val repository: LearningRepository,
-    private val authManager: AuthManager,
-    private val gameStateStore: GameStateStore,
-    private val api: ApiService
-) : ViewModelProvider.Factory {
-    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-        if (modelClass.isAssignableFrom(StoreViewModel::class.java)) {
-            @Suppress("UNCHECKED_CAST")
-            return StoreViewModel(repository, authManager, gameStateStore, api) as T
-        }
-        throw IllegalArgumentException("Unknown ViewModel class")
     }
 }

@@ -15,10 +15,10 @@ import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Store
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -56,7 +56,7 @@ import com.example.master.ui.home.HomeViewModel
 import com.example.master.ui.lesson.LessonEvent
 import com.example.master.ui.lesson.LessonScreen
 import com.example.master.ui.lesson.LessonViewModel
-import com.example.master.ui.notifications.NotificationsScreen
+import com.example.master.ui.notifications.NotificationsRoute
 import com.example.master.ui.notifications.NotificationsViewModel
 import com.example.master.ui.store.DailyChallengeScreen
 import com.example.master.ui.store.StoreRoute
@@ -166,7 +166,7 @@ fun MasterApp() {
                 val viewModel: AuthViewModel = hiltViewModel()
                 RegisterScreen(
                     viewModel = viewModel,
-                    onBack = { navController.popBackStack() },
+                    onNavigateToLogin = { navController.popBackStack() },
                     onRegisterSuccess = {
                         navController.navigate("home") {
                             popUpTo("login") { inclusive = true }
@@ -208,7 +208,7 @@ fun MasterApp() {
 
             composable("notifications") {
                 val viewModel: NotificationsViewModel = hiltViewModel()
-                NotificationsScreen(viewModel = viewModel)
+                NotificationsRoute(viewModel = viewModel)
             }
 
             composable("store") {
@@ -284,7 +284,7 @@ fun MasterApp() {
                         if (!audioUrl.isNullOrBlank()) {
                             audioPlayer.play(audioUrl)
                         } else {
-                            ttsManager.speak(text, slow)
+                            ttsManager.speak(text, speed = if (slow) 0.7f else 1.0f)
                         }
                     },
                     onRequestSpeechRecognition = { prompt ->
@@ -295,11 +295,6 @@ fun MasterApp() {
             }
         }
     }
-}
-
-private fun shouldShowBottomBar(currentDestination: NavDestination?): Boolean {
-    val destinations = setOf("home", "dashboard", "notifications", "store")
-    return currentDestination?.hierarchy?.any { it.route in destinations } == true
 }
 
 private fun launchSpeechRecognizer(
@@ -314,4 +309,10 @@ private fun launchSpeechRecognizer(
         }
     }
     launcher.launch(intent)
+}
+
+private fun shouldShowBottomBar(currentDestination: NavDestination?): Boolean {
+    // Hide on auth screens, show everywhere else so users always have quick navigation
+    val hidden = setOf("login", "register")
+    return currentDestination?.route !in hidden
 }
