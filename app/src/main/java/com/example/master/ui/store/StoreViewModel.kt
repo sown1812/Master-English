@@ -1,7 +1,6 @@
 package com.example.master.ui.store
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.master.auth.AuthManager
 import com.example.master.data.local.ChallengeStatus
@@ -12,12 +11,14 @@ import com.example.master.network.UpdateBoosterRequest
 import com.example.master.network.UpdateDailyRequest
 import com.example.master.network.UpdateQuestRequest
 import com.example.master.ui.home.BoosterItem
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 data class StoreUiState(
     val isLoading: Boolean = true,
@@ -47,7 +48,8 @@ data class DailyChallengeUi(
     val target: Int = 5
 )
 
-class StoreViewModel(
+@HiltViewModel
+class StoreViewModel @Inject constructor(
     private val repository: LearningRepository,
     private val authManager: AuthManager,
     private val gameStateStore: GameStateStore,

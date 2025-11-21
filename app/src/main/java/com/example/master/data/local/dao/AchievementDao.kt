@@ -36,4 +36,7 @@ interface AchievementDao {
     
     @Delete
     suspend fun deleteAchievement(achievement: AchievementEntity)
+    
+    @Query("DELETE FROM achievements WHERE userId = :userId")
+    suspend fun deleteAchievementsByUser(userId: String)
 }

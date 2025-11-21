@@ -7,11 +7,14 @@ import com.example.master.data.local.entity.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.firstOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
-class LearningRepository(private val database: AppDatabase) {
+class LearningRepository @Inject constructor(
+    private val database: AppDatabase
+) {
     
     private val wordDao = database.wordDao()
     private val lessonDao = database.lessonDao()
@@ -276,6 +279,23 @@ class LearningRepository(private val database: AppDatabase) {
             averageAccuracy = averageAccuracy,
             achievementsUnlocked = unlockedAchievements
         )
+    }
+
+    // ==================== Sync helpers ====================
+    suspend fun replaceUser(user: UserEntity) = userDao.insertUser(user)
+    
+    suspend fun replaceProgress(userId: String, items: List<UserProgressEntity>) {
+        progressDao.deleteUserProgress(userId)
+        if (items.isNotEmpty()) {
+            progressDao.insertProgressList(items)
+        }
+    }
+    
+    suspend fun replaceAchievements(userId: String, items: List<AchievementEntity>) {
+        achievementDao.deleteAchievementsByUser(userId)
+        if (items.isNotEmpty()) {
+            achievementDao.insertAchievements(items)
+        }
     }
 }
 

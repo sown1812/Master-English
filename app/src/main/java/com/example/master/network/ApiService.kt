@@ -31,4 +31,7 @@ interface ApiService {
 
     @GET("/leaderboard")
     suspend fun getLeaderboard(@Query("limit") limit: Int = 20): List<LeaderboardEntryRemote>
+
+    @POST("/sync")
+    suspend fun sync(@Body payload: SyncPayload): SyncResponse
 }

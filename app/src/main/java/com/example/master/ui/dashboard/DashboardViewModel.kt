@@ -3,7 +3,6 @@ package com.example.master.ui.dashboard
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.master.auth.AuthManager
 import com.example.master.data.local.entity.AchievementEntity
@@ -11,13 +10,16 @@ import com.example.master.data.local.entity.UserEntity
 import com.example.master.data.local.entity.UserProgressEntity
 import com.example.master.data.repository.LearningRepository
 import com.example.master.network.ApiService
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import javax.inject.Inject
 
-class DashboardViewModel(
+@HiltViewModel
+class DashboardViewModel @Inject constructor(
     private val repository: LearningRepository,
     private val authManager: AuthManager,
     private val api: ApiService

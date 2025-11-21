@@ -3,8 +3,11 @@ package com.example.master.ui.notifications
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
+import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
 
-class NotificationsViewModel : ViewModel() {
+@HiltViewModel
+class NotificationsViewModel @Inject constructor() : ViewModel() {
 	private val _uiState = mutableStateOf(NotificationUiState.sample())
 
 	val uiState: State<NotificationUiState> = _uiState

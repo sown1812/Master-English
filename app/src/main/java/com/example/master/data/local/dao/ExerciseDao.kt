@@ -19,6 +19,9 @@ interface ExerciseDao {
     @Query("SELECT COUNT(*) FROM exercises WHERE lessonId = :lessonId")
     suspend fun getExercisesCountByLesson(lessonId: Int): Int
     
+    @Query("SELECT COUNT(*) FROM exercises")
+    suspend fun getTotalExercisesCount(): Int
+    
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertExercise(exercise: ExerciseEntity): Long
     

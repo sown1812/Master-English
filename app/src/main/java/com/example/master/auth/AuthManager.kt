@@ -16,8 +16,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import javax.inject.Inject
+import javax.inject.Singleton
 
-class AuthManager(
+@Singleton
+class AuthManager @Inject constructor(
     private val repository: LearningRepository
 ) {
     private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()

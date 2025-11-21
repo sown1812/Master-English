@@ -1,25 +1,31 @@
 package com.example.master.ui.lesson
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.master.data.local.entity.UserProgressEntity
 import com.example.master.data.repository.LearningRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import javax.inject.Inject
 
 private const val FAIL_XP_REWARD = 10
 private const val FAIL_COIN_REWARD = 4
 
-class LessonViewModel(
+@HiltViewModel
+class LessonViewModel @Inject constructor(
     private val repository: LearningRepository,
-    private val lessonId: Int
+    savedStateHandle: SavedStateHandle
 ) : ViewModel() {
+    
+    private val lessonId: Int = savedStateHandle["lessonId"] ?: 1
     
     private val gson = Gson()
     private val engine = ExerciseEngine()
