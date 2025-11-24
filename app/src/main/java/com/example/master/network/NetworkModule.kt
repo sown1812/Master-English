@@ -2,6 +2,7 @@ package com.example.master.network
 
 import com.example.master.BuildConfig
 import com.example.master.auth.AuthManager
+import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
@@ -14,8 +15,9 @@ object NetworkModule {
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val reqBuilder = chain.request().newBuilder()
-                authManager.getCurrentUserId()?.let { uid ->
-                    reqBuilder.addHeader("Authorization", "Bearer $uid")
+                val token = runBlocking { authManager.getIdToken() }
+                token?.let {
+                    reqBuilder.addHeader("Authorization", "Bearer $it")
                 }
                 chain.proceed(reqBuilder.build())
             }

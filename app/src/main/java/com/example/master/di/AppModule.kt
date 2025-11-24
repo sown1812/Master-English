@@ -8,6 +8,7 @@ import com.example.master.data.local.AppDatabase
 import com.example.master.data.local.GameStateStore
 import com.example.master.data.local.PendingSyncStore
 import com.example.master.data.repository.LearningRepository
+import com.example.master.di.ApplicationScope
 import com.example.master.network.ApiService
 import com.example.master.network.NetworkModule
 import com.google.gson.Gson
@@ -16,6 +17,9 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import javax.inject.Singleton
 
 @Module
@@ -40,8 +44,9 @@ object AppModule {
     @Singleton
     fun provideAuthManager(
         repository: LearningRepository,
-        authProvider: AuthProvider
-    ): AuthManager = AuthManager(repository, authProvider)
+        authProvider: AuthProvider,
+        @ApplicationScope appScope: CoroutineScope
+    ): AuthManager = AuthManager(repository, authProvider, appScope)
 
     @Provides
     @Singleton
@@ -58,6 +63,11 @@ object AppModule {
     @Provides
     @Singleton
     fun provideGson(): Gson = Gson()
+
+    @Provides
+    @Singleton
+    @ApplicationScope
+    fun provideApplicationScope(): CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     @Provides
     @Singleton

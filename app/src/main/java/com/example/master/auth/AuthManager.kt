@@ -4,17 +4,19 @@ import com.example.master.core.user.UserProfile
 import com.example.master.data.local.entity.UserEntity
 import com.example.master.data.repository.LearningRepository
 import com.example.master.auth.di.AuthProvider
+import com.example.master.di.ApplicationScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.auth.GoogleAuthProvider
+import com.google.firebase.auth.FirebaseAuthException
+import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
+import com.google.firebase.auth.FirebaseAuthInvalidUserException
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
@@ -23,10 +25,10 @@ import javax.inject.Singleton
 @Singleton
 class AuthManager @Inject constructor(
     private val repository: LearningRepository,
-    private val authProvider: AuthProvider
+    private val authProvider: AuthProvider,
+    @ApplicationScope private val appScope: CoroutineScope
 ) {
     private val firebaseAuth: FirebaseAuth = authProvider.firebaseAuth
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: Flow<AuthState> = _authState.asStateFlow()
@@ -42,7 +44,7 @@ class AuthManager @Inject constructor(
         val firebaseUser = firebaseAuth.currentUser
         if (firebaseUser != null) {
             _authState.value = AuthState.Authenticated(firebaseUser)
-            scope.launch {
+            appScope.launch {
                 val localUser = ensureLocalUser(firebaseUser)
                 _currentUser.value = localUser
             }
@@ -145,6 +147,10 @@ class AuthManager @Inject constructor(
     fun getCurrentUserId(): String? {
         return firebaseAuth.currentUser?.uid
     }
+
+    suspend fun getIdToken(forceRefresh: Boolean = false): String? {
+        return firebaseAuth.currentUser?.getIdToken(forceRefresh)?.await()?.token
+    }
     
     fun isAuthenticated(): Boolean {
         return firebaseAuth.currentUser != null
@@ -177,7 +183,7 @@ class AuthManager @Inject constructor(
             )
         } catch (e: Exception) {
             _authState.value = AuthState.Unauthenticated
-            AuthResult.Error(e.message ?: errorIfNull)
+            mapAuthError(e, errorIfNull)
         }
     }
 
@@ -199,6 +205,15 @@ class AuthManager @Inject constructor(
         } else {
             _authState.value = AuthState.Unauthenticated
             AuthResult.Error(errorIfNull)
+        }
+    }
+
+    private fun mapAuthError(e: Exception, fallback: String): AuthResult.Error {
+        return when (e) {
+            is FirebaseAuthInvalidCredentialsException -> AuthResult.Error("Invalid credentials")
+            is FirebaseAuthInvalidUserException -> AuthResult.Error("Account not found or disabled")
+            is FirebaseAuthException -> AuthResult.Error(e.message ?: fallback)
+            else -> AuthResult.Error(fallback)
         }
     }
 }
