@@ -19,6 +19,7 @@ object NetworkModule {
                 }
                 chain.proceed(reqBuilder.build())
             }
+            .addInterceptor(RetryInterceptor())
             .addInterceptor(logger)
             .build()
 

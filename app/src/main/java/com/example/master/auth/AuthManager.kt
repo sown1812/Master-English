@@ -3,6 +3,7 @@ package com.example.master.auth
 import com.example.master.core.user.UserProfile
 import com.example.master.data.local.entity.UserEntity
 import com.example.master.data.repository.LearningRepository
+import com.example.master.auth.di.AuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.auth.UserProfileChangeRequest
@@ -21,9 +22,10 @@ import javax.inject.Singleton
 
 @Singleton
 class AuthManager @Inject constructor(
-    private val repository: LearningRepository
+    private val repository: LearningRepository,
+    private val authProvider: AuthProvider
 ) {
-    private val firebaseAuth: FirebaseAuth = FirebaseAuth.getInstance()
+    private val firebaseAuth: FirebaseAuth = authProvider.firebaseAuth
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -50,49 +52,21 @@ class AuthManager @Inject constructor(
     }
     
     suspend fun signIn(email: String, password: String): AuthResult {
-        return try {
-            _authState.value = AuthState.Loading
-            
-            val result = firebaseAuth.signInWithEmailAndPassword(email, password).await()
-            val firebaseUser = result.user
-            
-            if (firebaseUser != null) {
-                val localUser = ensureLocalUser(firebaseUser)
-                
-                _currentUser.value = localUser
-                _authState.value = AuthState.Authenticated(firebaseUser)
-                AuthResult.Success
-            } else {
-                _authState.value = AuthState.Unauthenticated
-                AuthResult.Error("Login failed")
-            }
-        } catch (e: Exception) {
-            _authState.value = AuthState.Unauthenticated
-            AuthResult.Error(e.message ?: "Unknown error occurred")
+        return authFlow(
+            errorIfNull = "Login failed",
+            initializeAchievementsIfNew = false
+        ) {
+            firebaseAuth.signInWithEmailAndPassword(email, password).await().user
         }
     }
     
     suspend fun signInWithGoogle(idToken: String): AuthResult {
-        return try {
-            _authState.value = AuthState.Loading
-            
+        return authFlow(
+            errorIfNull = "Google sign-in failed",
+            initializeAchievementsIfNew = false
+        ) {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
-            val result = firebaseAuth.signInWithCredential(credential).await()
-            val firebaseUser = result.user
-            
-            if (firebaseUser != null) {
-                val localUser = ensureLocalUser(firebaseUser)
-                
-                _currentUser.value = localUser
-                _authState.value = AuthState.Authenticated(firebaseUser)
-                AuthResult.Success
-            } else {
-                _authState.value = AuthState.Unauthenticated
-                AuthResult.Error("Google sign-in failed")
-            }
-        } catch (e: Exception) {
-            _authState.value = AuthState.Unauthenticated
-            AuthResult.Error(e.message ?: "Google sign-in failed")
+            firebaseAuth.signInWithCredential(credential).await().user
         }
     }
     
@@ -101,36 +75,20 @@ class AuthManager @Inject constructor(
         password: String, 
         displayName: String
     ): AuthResult {
-        return try {
-            _authState.value = AuthState.Loading
-            
-            // Create Firebase user
+        return authFlow(
+            errorIfNull = "Registration failed",
+            initializeAchievementsIfNew = true,
+            fallbackDisplayName = displayName
+        ) {
             val result = firebaseAuth.createUserWithEmailAndPassword(email, password).await()
             val firebaseUser = result.user
-            
-            if (firebaseUser != null) {
-                // Update display name
+            firebaseUser?.let {
                 val profileUpdates = UserProfileChangeRequest.Builder()
                     .setDisplayName(displayName)
                     .build()
-                firebaseUser.updateProfile(profileUpdates).await()
-                
-                // Create local user
-                val localUser = createLocalUser(firebaseUser, displayName)
-                
-                // Initialize achievements
-                repository.initializeAchievements(firebaseUser.uid)
-                
-                _currentUser.value = localUser
-                _authState.value = AuthState.Authenticated(firebaseUser)
-                AuthResult.Success
-            } else {
-                _authState.value = AuthState.Unauthenticated
-                AuthResult.Error("Registration failed")
+                it.updateProfile(profileUpdates).await()
             }
-        } catch (e: Exception) {
-            _authState.value = AuthState.Unauthenticated
-            AuthResult.Error(e.message ?: "Unknown error occurred")
+            firebaseUser
         }
     }
 
@@ -174,12 +132,13 @@ class AuthManager @Inject constructor(
 
     private suspend fun ensureLocalUser(
         firebaseUser: FirebaseUser,
-        fallbackDisplayName: String? = null
+        fallbackDisplayName: String? = null,
+        initializeAchievementsIfNew: Boolean = false
     ): UserEntity {
         val existing = repository.getUserByIdSync(firebaseUser.uid)
         if (existing != null) return existing
         val created = createLocalUser(firebaseUser, fallbackDisplayName ?: firebaseUser.displayName)
-        repository.initializeAchievements(firebaseUser.uid)
+        if (initializeAchievementsIfNew) repository.initializeAchievements(firebaseUser.uid)
         return created
     }
     
@@ -199,6 +158,48 @@ class AuthManager @Inject constructor(
     fun observeUserProfile(): Flow<UserProfile?> {
         val userId = firebaseAuth.currentUser?.uid ?: return flowOf(null)
         return repository.getUserProfile(userId)
+    }
+
+    private suspend fun authFlow(
+        errorIfNull: String,
+        initializeAchievementsIfNew: Boolean,
+        fallbackDisplayName: String? = null,
+        action: suspend () -> FirebaseUser?
+    ): AuthResult {
+        return try {
+            _authState.value = AuthState.Loading
+            val firebaseUser = action()
+            handleFirebaseUser(
+                firebaseUser = firebaseUser,
+                errorIfNull = errorIfNull,
+                initializeAchievementsIfNew = initializeAchievementsIfNew,
+                fallbackDisplayName = fallbackDisplayName
+            )
+        } catch (e: Exception) {
+            _authState.value = AuthState.Unauthenticated
+            AuthResult.Error(e.message ?: errorIfNull)
+        }
+    }
+
+    private suspend fun handleFirebaseUser(
+        firebaseUser: FirebaseUser?,
+        errorIfNull: String,
+        initializeAchievementsIfNew: Boolean,
+        fallbackDisplayName: String?
+    ): AuthResult {
+        return if (firebaseUser != null) {
+            val localUser = ensureLocalUser(
+                firebaseUser = firebaseUser,
+                fallbackDisplayName = fallbackDisplayName,
+                initializeAchievementsIfNew = initializeAchievementsIfNew
+            )
+            _currentUser.value = localUser
+            _authState.value = AuthState.Authenticated(firebaseUser)
+            AuthResult.Success
+        } else {
+            _authState.value = AuthState.Unauthenticated
+            AuthResult.Error(errorIfNull)
+        }
     }
 }
 

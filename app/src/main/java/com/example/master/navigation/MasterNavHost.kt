@@ -65,6 +65,8 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
 import java.util.Locale
+import androidx.navigation.NavOptionsBuilder
+import androidx.navigation.NavGraph.Companion.findStartDestination
 
 private data class BottomDestination(
     val route: String,
@@ -78,12 +80,14 @@ fun MasterApp() {
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
 
-    val bottomDestinations = listOf(
-        BottomDestination("home", "Home", Icons.Filled.Home),
-        BottomDestination("dashboard", "Dashboard", Icons.Filled.Dashboard),
-        BottomDestination("notifications", "Alerts", Icons.Filled.Notifications),
-        BottomDestination("store", "Store", Icons.Filled.Store)
-    )
+    val bottomDestinations = remember {
+        listOf(
+            BottomDestination("home", "Home", Icons.Filled.Home),
+            BottomDestination("dashboard", "Dashboard", Icons.Filled.Dashboard),
+            BottomDestination("notifications", "Alerts", Icons.Filled.Notifications),
+            BottomDestination("store", "Store", Icons.Filled.Store)
+        )
+    }
 
     Scaffold(
         bottomBar = {
@@ -126,7 +130,12 @@ fun MasterApp() {
                     onNavigateToRegister = { navController.navigate("register") },
                     onLoginSuccess = {
                         navController.navigate("home") {
-                            popUpTo("login") { inclusive = true }
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                inclusive = true
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     },
                     onGoogleSignIn = {
@@ -141,22 +150,13 @@ fun MasterApp() {
                             .build()
 
                         scope.launch {
-                            runCatching { credentialManager.getCredential(context, request) }
-                                .onSuccess { credResult ->
-                                    runCatching {
-                                        GoogleIdTokenCredential.createFrom(credResult.credential.data).idToken
-                                    }.onSuccess { token ->
-                                        if (!token.isNullOrEmpty()) {
-                                            viewModel.signInWithGoogle(token)
-                                        } else {
-                                            viewModel.reportError("Unable to sign in with Google")
-                                        }
-                                    }.onFailure { e ->
-                                        viewModel.reportError(e.localizedMessage ?: "Unable to sign in with Google")
-                                    }
-                                }.onFailure { e ->
-                                    viewModel.reportError(e.localizedMessage ?: "Unable to sign in with Google")
-                                }
+                            handleGoogleSignIn(
+                                context = context,
+                                credentialManager = credentialManager,
+                                request = request,
+                                onToken = { viewModel.signInWithGoogle(it) },
+                                onError = { viewModel.reportError(it) }
+                            )
                         }
                     }
                 )
@@ -169,7 +169,12 @@ fun MasterApp() {
                     onNavigateToLogin = { navController.popBackStack() },
                     onRegisterSuccess = {
                         navController.navigate("home") {
-                            popUpTo("login") { inclusive = true }
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                inclusive = true
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
                         }
                     }
                 )
@@ -315,4 +320,24 @@ private fun shouldShowBottomBar(currentDestination: NavDestination?): Boolean {
     // Hide on auth screens, show everywhere else so users always have quick navigation
     val hidden = setOf("login", "register")
     return currentDestination?.route !in hidden
+}
+
+private suspend fun handleGoogleSignIn(
+    context: android.content.Context,
+    credentialManager: CredentialManager,
+    request: GetCredentialRequest,
+    onToken: (String) -> Unit,
+    onError: (String) -> Unit
+) {
+    try {
+        val credResult = credentialManager.getCredential(context, request)
+        val token = GoogleIdTokenCredential.createFrom(credResult.credential.data).idToken
+        if (!token.isNullOrBlank()) {
+            onToken(token)
+        } else {
+            onError("Unable to sign in with Google")
+        }
+    } catch (e: Exception) {
+        onError(e.localizedMessage ?: "Unable to sign in with Google")
+    }
 }

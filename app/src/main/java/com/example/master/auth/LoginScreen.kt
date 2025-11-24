@@ -87,7 +87,7 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(16.dp))
             
             Text(
-                text = "Master English",
+                text = stringResource(R.string.login_title),
                 style = MaterialTheme.typography.headlineLarge.copy(
                     fontWeight = FontWeight.Bold,
                     color = Color.White
@@ -95,7 +95,7 @@ fun LoginScreen(
             )
             
             Text(
-                text = "Learn English the smart way",
+                text = stringResource(R.string.login_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.9f)
             )
@@ -113,15 +113,15 @@ fun LoginScreen(
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     Text(
-                        text = "Welcome Back!",
+                        text = stringResource(R.string.login_welcome_back),
                         style = MaterialTheme.typography.headlineSmall.copy(
                             fontWeight = FontWeight.Bold
                         ),
                         color = Color(0xFF1F2937)
                     )
-                    
+
                     Text(
-                        text = "Sign in to continue learning",
+                        text = stringResource(R.string.login_subhead),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF6B7280)
                     )
@@ -132,7 +132,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = uiState.email,
                         onValueChange = { viewModel.onEmailChanged(it) },
-                        label = { Text("Email") },
+                        label = { Text(stringResource(R.string.login_email_label)) },
                         leadingIcon = {
                             Icon(Icons.Filled.Email, contentDescription = null)
                         },
@@ -155,7 +155,7 @@ fun LoginScreen(
                     OutlinedTextField(
                         value = uiState.password,
                         onValueChange = { viewModel.onPasswordChanged(it) },
-                        label = { Text("Password") },
+                        label = { Text(stringResource(R.string.login_password_label)) },
                         leadingIcon = {
                             Icon(Icons.Filled.Lock, contentDescription = null)
                         },
@@ -167,9 +167,9 @@ fun LoginScreen(
                                     else 
                                         Icons.Filled.VisibilityOff,
                                     contentDescription = if (passwordVisible) 
-                                        "Hide password" 
+                                        stringResource(R.string.login_hide_password) 
                                     else 
-                                        "Show password"
+                                        stringResource(R.string.login_show_password)
                                 )
                             }
                         },
@@ -223,7 +223,7 @@ fun LoginScreen(
                             )
                         } else {
                             Text(
-                                text = "Sign In",
+                                text = stringResource(R.string.login_sign_in),
                                 style = MaterialTheme.typography.titleMedium.copy(
                                     fontWeight = FontWeight.Bold
                                 )
@@ -235,7 +235,7 @@ fun LoginScreen(
                     
                     // Forgot Password
                     Text(
-                        text = "Forgot Password?",
+                        text = stringResource(R.string.login_forgot_password),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF6366F1),
                         modifier = Modifier.clickable {
@@ -283,7 +283,7 @@ fun LoginScreen(
                     ) {
                         HorizontalDivider(modifier = Modifier.weight(1f))
                         Text(
-                            text = "OR",
+                            text = stringResource(R.string.login_or),
                             modifier = Modifier.padding(horizontal = 16.dp),
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF9CA3AF)
@@ -299,12 +299,12 @@ fun LoginScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Don't have an account? ",
+                            text = stringResource(R.string.login_no_account),
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFF6B7280)
                         )
                         Text(
-                            text = "Sign Up",
+                            text = stringResource(R.string.login_sign_up),
                             style = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.Bold
                             ),

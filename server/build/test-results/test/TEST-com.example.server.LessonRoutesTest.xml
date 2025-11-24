@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<testsuite name="com.example.server.LessonRoutesTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2025-11-20T09:18:56.598Z" hostname="DPC00154" time="0.64">
+<testsuite name="com.example.server.LessonRoutesTest" tests="1" skipped="0" failures="0" errors="0" timestamp="2025-11-24T07:46:27" hostname="DPC00154" time="0.67">
   <properties/>
-  <testcase name="testHealth" classname="com.example.server.LessonRoutesTest" time="0.64"/>
-  <system-out><![CDATA[16:18:56.859 [DefaultDispatcher-worker-1 @call-context#2] INFO ktor.test -- No ktor.deployment.watch patterns specified, automatic reload is not active.
-16:18:57.105 [DefaultDispatcher-worker-1 @call-context#2] INFO ktor.test -- Application started in 0.255 seconds.
-16:18:57.108 [DefaultDispatcher-worker-3 @coroutine#4] INFO ktor.test -- Responding at http://localhost:80
-16:18:57.109 [DefaultDispatcher-worker-3 @coroutine#4] INFO ktor.test -- Responding at https://localhost:443
+  <testcase name="testHealth" classname="com.example.server.LessonRoutesTest" time="0.67"/>
+  <system-out><![CDATA[14:46:27.996 [DefaultDispatcher-worker-1 @call-context#2] INFO ktor.test -- No ktor.deployment.watch patterns specified, automatic reload is not active.
+14:46:28.267 [DefaultDispatcher-worker-1 @call-context#2] INFO ktor.test -- Application started in 0.28 seconds.
+14:46:28.269 [DefaultDispatcher-worker-3 @coroutine#4] INFO ktor.test -- Responding at http://localhost:80
+14:46:28.269 [DefaultDispatcher-worker-3 @coroutine#4] INFO ktor.test -- Responding at https://localhost:443
 ]]></system-out>
-  <system-err><![CDATA[SLF4J(I): Connected with provider of type [ch.qos.logback.classic.spi.LogbackServiceProvider]
-]]></system-err>
+  <system-err><![CDATA[]]></system-err>
 </testsuite>

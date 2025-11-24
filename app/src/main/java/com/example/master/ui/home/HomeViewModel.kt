@@ -41,9 +41,9 @@ class HomeViewModel @Inject constructor() : ViewModel() {
 
     fun onBoosterSelected(booster: BoosterItem) {
         val message = if (booster.isOwned) {
-            "Bạn đã sở hữu ${booster.title}"
+            "Ban da so huu ${booster.title}"
         } else {
-            "Mua ${booster.title} với ${booster.costCoins} coins"
+            "Mua ${booster.title} voi ${booster.costCoins} coins"
         }
         emitEvent(HomeNavigationEvent.ShowMessage(message))
         emitEvent(HomeNavigationEvent.NavigateToBooster(booster))
@@ -51,7 +51,7 @@ class HomeViewModel @Inject constructor() : ViewModel() {
 
     fun onThemeSelected(theme: ThemeOption) {
         if (!theme.isUnlocked) {
-            emitEvent(HomeNavigationEvent.ShowMessage("Chưa mở khóa chủ đề ${theme.name}"))
+            emitEvent(HomeNavigationEvent.ShowMessage("Chua mo khoa chu de ${theme.name}"))
             return
         }
 

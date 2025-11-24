@@ -13,6 +13,7 @@ dependencies {
     implementation("io.ktor:ktor-server-content-negotiation:2.3.12")
     implementation("io.ktor:ktor-serialization-kotlinx-json:2.3.12")
     implementation("io.ktor:ktor-server-status-pages:2.3.12")
+    implementation("io.ktor:ktor-server-auth:2.3.12")
     implementation("ch.qos.logback:logback-classic:1.5.12")
 
     // Config, DB
@@ -25,6 +26,9 @@ dependencies {
 
     // Flyway for migrations
     implementation("org.flywaydb:flyway-core:10.18.2")
+
+    // Firebase auth
+    implementation("com.google.firebase:firebase-admin:9.4.2")
 
     // Tests
     testImplementation(kotlin("test"))

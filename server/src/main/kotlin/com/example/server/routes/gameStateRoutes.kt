@@ -1,5 +1,6 @@
 package com.example.server.routes
 
+import com.example.server.auth.ensureUser
 import com.example.server.model.*
 import com.example.server.tables.DailyChallenges
 import com.example.server.tables.UserBoosters
@@ -11,6 +12,7 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.transactions.transaction
+import java.sql.Connection
 
 fun Route.gameStateRoutes() {
     route("/gamestate") {
@@ -18,7 +20,7 @@ fun Route.gameStateRoutes() {
             val userId = call.parameters["userId"] ?: return@get call.respond(
                 HttpStatusCode.BadRequest, mapOf("error" to "Missing userId")
             )
-            if (!call.isAuthorized(userId)) return@get
+            if (!call.ensureUser(userId)) return@get
             val boosters = transaction {
                 UserBoosters.selectAll().where { UserBoosters.userId eq userId }.map {
                     BoosterStateDto(
@@ -54,9 +56,9 @@ fun Route.gameStateRoutes() {
             val userId = call.parameters["userId"] ?: return@post call.respond(
                 HttpStatusCode.BadRequest, mapOf("error" to "Missing userId")
             )
-            if (!call.isAuthorized(userId)) return@post
+            if (!call.ensureUser(userId)) return@post
             val req = call.receive<UpdateBoosterRequest>()
-            transaction {
+            transaction(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
                 UserBoosters.insertIgnore {
                     it[UserBoosters.userId] = userId
                     it[UserBoosters.boosterKey] = req.boosterKey
@@ -75,9 +77,9 @@ fun Route.gameStateRoutes() {
             val userId = call.parameters["userId"] ?: return@post call.respond(
                 HttpStatusCode.BadRequest, mapOf("error" to "Missing userId")
             )
-            if (!call.isAuthorized(userId)) return@post
+            if (!call.ensureUser(userId)) return@post
             val req = call.receive<UpdateQuestRequest>()
-            transaction {
+            transaction(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
                 UserQuests.insertIgnore {
                     it[UserQuests.userId] = userId
                     it[questKey] = req.questKey
@@ -96,9 +98,9 @@ fun Route.gameStateRoutes() {
             val userId = call.parameters["userId"] ?: return@post call.respond(
                 HttpStatusCode.BadRequest, mapOf("error" to "Missing userId")
             )
-            if (!call.isAuthorized(userId)) return@post
+            if (!call.ensureUser(userId)) return@post
             val req = call.receive<UpdateDailyRequest>()
-            transaction {
+            transaction(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
                 DailyChallenges.insertIgnore {
                     it[DailyChallenges.userId] = userId
                     it[status] = req.status
@@ -115,15 +117,5 @@ fun Route.gameStateRoutes() {
             }
             call.respond(mapOf("status" to "ok"))
         }
-    }
-}
-
-private suspend fun ApplicationCall.isAuthorized(userId: String): Boolean {
-    val token = request.headers["Authorization"]?.removePrefix("Bearer ")?.trim()
-    return if (token == userId) {
-        true
-    } else {
-        respond(HttpStatusCode.Unauthorized, mapOf("error" to "Unauthorized"))
-        false
     }
 }

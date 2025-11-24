@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+    id("kotlin-parcelize")
     id("org.jetbrains.kotlin.kapt")
     id("com.google.gms.google-services")
     id("com.google.dagger.hilt.android")
@@ -25,17 +26,36 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
-    buildTypes {
-        debug {
+    flavorDimensions += listOf("env")
+    productFlavors {
+        create("dev") {
+            dimension = "env"
+            applicationIdSuffix = ".dev"
+            versionNameSuffix = "-dev"
             buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080\"")
         }
+        create("staging") {
+            dimension = "env"
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            buildConfigField("String", "API_BASE_URL", "\"https://staging.api.master.com\"")
+        }
+        create("prod") {
+            dimension = "env"
+            buildConfigField("String", "API_BASE_URL", "\"https://api.master.com\"")
+        }
+    }
+
+    buildTypes {
+        debug {
+        }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:8080\"")
         }
     }
     compileOptions {
@@ -80,9 +100,10 @@ dependencies {
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.0")
     
     // Retrofit for API calls
+    implementation(platform("com.squareup.okhttp3:okhttp-bom:4.12.0"))
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
-    implementation("com.squareup.okhttp3:logging-interceptor:4.12.0")
+    implementation("com.squareup.okhttp3:logging-interceptor")
     
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3")

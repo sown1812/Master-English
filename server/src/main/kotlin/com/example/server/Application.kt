@@ -1,5 +1,6 @@
 package com.example.server
 
+import com.example.server.auth.configureFirebaseAuth
 import com.example.server.routes.exerciseRoutes
 import com.example.server.routes.lessonRoutes
 import com.example.server.routes.progressRoutes
@@ -10,6 +11,7 @@ import com.example.server.routes.leaderboardRoutes
 import com.typesafe.config.ConfigFactory
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
+import io.ktor.server.auth.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
@@ -33,15 +35,19 @@ fun Application.module() {
         }
     }
 
+    configureFirebaseAuth()
+
     routing {
         get("/health") { call.respond(mapOf("status" to "ok")) }
         lessonRoutes()
         wordRoutes()
         exerciseRoutes()
-        userRoutes()
-        progressRoutes()
-        gameStateRoutes()
         leaderboardRoutes()
+        authenticate("firebaseAuth") {
+            userRoutes()
+            progressRoutes()
+            gameStateRoutes()
+        }
     }
 }
 

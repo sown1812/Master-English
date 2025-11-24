@@ -1,5 +1,6 @@
 package com.example.server.routes
 
+import com.example.server.auth.ensureUser
 import com.example.server.model.UserDto
 import com.example.server.tables.Users
 import io.ktor.server.application.*
@@ -13,6 +14,7 @@ fun Route.userRoutes() {
     route("/users") {
         get("/{id}") {
             val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid user id")
+            if (!call.ensureUser(id)) return@get
             val user = transaction {
                 Users.selectAll().where { Users.userId eq id }.limit(1).firstOrNull()?.let {
                     UserDto(
@@ -43,6 +45,7 @@ fun Route.userRoutes() {
 
         put("/{id}") {
             val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid user id")
+            if (!call.ensureUser(id)) return@put
             val body = call.receive<UserDto>()
             transaction {
                 Users.update({ Users.userId eq id }) {

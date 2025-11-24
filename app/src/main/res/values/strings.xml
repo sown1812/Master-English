@@ -5,4 +5,17 @@
     <string name="title_notifications">Thong bao</string>
     <string name="default_web_client_id">1061693617019-uiarescu14knpr99guja2p11ejbdimm0.apps.googleusercontent.com</string>
     <string name="login_continue_google">Continue with Google</string>
+    <string name="login_title">Master English</string>
+    <string name="login_subtitle">Learn English the smart way</string>
+    <string name="login_welcome_back">Welcome Back!</string>
+    <string name="login_subhead">Sign in to continue learning</string>
+    <string name="login_email_label">Email</string>
+    <string name="login_password_label">Password</string>
+    <string name="login_hide_password">Hide password</string>
+    <string name="login_show_password">Show password</string>
+    <string name="login_sign_in">Sign In</string>
+    <string name="login_forgot_password">Forgot Password?</string>
+    <string name="login_or">OR</string>
+    <string name="login_no_account">Dont have an account?</string>
+    <string name="login_sign_up">Sign Up</string>
 </resources>

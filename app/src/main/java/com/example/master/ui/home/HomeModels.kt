@@ -25,15 +25,15 @@ data class HomeUiState(
         fun sample(): HomeUiState = HomeUiState(
             avatarUrl = null,
             userName = "Alex",
-            coins = 350,
-            streakDays = 5,
+            coins = 120,
+            streakDays = 1,
             streakRewardAvailable = true,
             nextChallengeCountdown = "12:45:10",
-            level = 39,
-            difficulty = Difficulty.SUPER_HARD,
-            progress = 0.39f,
-            maxLevel = 100,
-            totalScore = 4250,
+            level = 1,
+            difficulty = Difficulty.EASY,
+            progress = 0.05f,
+            maxLevel = 20,
+            totalScore = 120,
             badges = listOf(
                 AchievementBadge.FirstWords(unlocked = true, date = "2025-10-01"),
                 AchievementBadge.VocabularyMaster(unlocked = false, date = null),
@@ -42,28 +42,28 @@ data class HomeUiState(
                 AchievementBadge.PerfectScore(unlocked = false, date = null)
             ),
             dailyChallenge = DailyChallenge(
-                title = "Quiz 10 từ vựng mới",
+                title = "Quiz 10 tu vung moi",
                 rewardCoins = 100,
                 isAccepted = false
             ),
             quests = listOf(
                 Quest(
-                    title = "Ôn lại 15 động từ bất quy tắc",
-                    description = "Hoàn thành 3 level ở độ khó Medium",
+                    title = "On luyen 15 tu bat ky",
+                    description = "Hoan thanh 3 level o do kho Medium",
                     rewardCoins = 80,
                     progress = 0.6f,
                     stepsLabel = "3/5"
                 ),
                 Quest(
-                    title = "Làm thử thách từ vựng hôm nay",
-                    description = "Đạt điểm tối thiểu 40/50",
+                    title = "Lam thu thach tu vung hom nay",
+                    description = "Dat diem toi thieu 40/50",
                     rewardCoins = 120,
                     progress = 0.2f,
                     stepsLabel = "1/4"
                 ),
                 Quest(
-                    title = "Chia sẻ streak",
-                    description = "Chia sẻ kết quả streak lên mạng xã hội",
+                    title = "Chia se streak",
+                    description = "Chia se ket qua streak len mang xa hoi",
                     rewardCoins = 40,
                     progress = 1f,
                     stepsLabel = "1/1"
@@ -71,20 +71,20 @@ data class HomeUiState(
             ),
             boosters = listOf(
                 BoosterItem(
-                    title = "Hint từ vựng",
-                    description = "Hiển thị nghĩa tiếng Việt cho 1 câu hỏi",
+                    title = "Hint tu vung",
+                    description = "Hien tieng Viet cho 1 cau hoi",
                     costCoins = 30,
                     isOwned = true
                 ),
                 BoosterItem(
                     title = "Double XP",
-                    description = "Nhân đôi điểm level kế tiếp",
+                    description = "Nhan doi diem level ke tiep",
                     costCoins = 120,
                     isOwned = false
                 ),
                 BoosterItem(
-                    title = "Skip câu",
-                    description = "Bỏ qua 1 câu hỏi khó",
+                    title = "Skip cau",
+                    description = "Bo qua 1 cau hoi kho",
                     costCoins = 60,
                     isOwned = false
                 )

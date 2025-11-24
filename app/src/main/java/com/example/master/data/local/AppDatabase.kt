@@ -127,12 +127,12 @@ abstract class AppDatabase : RoomDatabase() {
                     title = "Basics 1",
                     description = "Greetings, to be, and short self-intros like Duolingo Unit 1",
                     order = 1,
-                    totalWords = 12,
-                    totalExercises = 8,
+                    totalWords = 20,
+                    totalExercises = 12,
                     difficulty = "EASY",
                     category = "basics",
-                    xpReward = 45,
-                    coinsReward = 10,
+                    xpReward = 65,
+                    coinsReward = 15,
                     isUnlocked = true
                 ),
                 LessonEntity(
@@ -567,7 +567,105 @@ abstract class AppDatabase : RoomDatabase() {
                 WordEntity("police", "canh sat", "po-lice", "noun", "Call the police.", "Goi canh sat.", lessonId = 20, difficulty = 3, category = "safety"),
                 WordEntity("fire", "chay", "fire", "noun", "There is a fire!", "Co chay!", lessonId = 20, difficulty = 3, category = "safety"),
                 WordEntity("help", "giup do", "help", "verb", "Please help me!", "Lam on giup toi!", lessonId = 20, difficulty = 2, category = "safety"),
-                WordEntity("lost", "lac duong", "lost", "adjective", "I am lost.", "Toi bi lac.", lessonId = 20, difficulty = 2, category = "directions")
+                WordEntity("lost", "lac duong", "lost", "adjective", "I am lost.", "Toi bi lac.", lessonId = 20, difficulty = 2, category = "directions"),
+                
+                // Lesson 1 - Additional words to complete full 20-word set
+                WordEntity(
+                    id = 1001,
+                    word = "good morning",
+                    translation = "chao buoi sang",
+                    pronunciation = "gud MOR-ning",
+                    partOfSpeech = "phrase",
+                    exampleSentence = "Good morning, class!",
+                    exampleTranslation = "Chao buoi sang ca lop!",
+                    lessonId = 1,
+                    difficulty = 1,
+                    category = "greetings"
+                ),
+                WordEntity(
+                    id = 1002,
+                    word = "good afternoon",
+                    translation = "chao buoi chieu",
+                    pronunciation = "gud AF-ter-noon",
+                    partOfSpeech = "phrase",
+                    exampleSentence = "Good afternoon, how are you?",
+                    exampleTranslation = "Chao buoi chieu, ban khoe khong?",
+                    lessonId = 1,
+                    difficulty = 1,
+                    category = "greetings"
+                ),
+                WordEntity(
+                    id = 1003,
+                    word = "good evening",
+                    translation = "chao buoi toi",
+                    pronunciation = "gud EEV-ning",
+                    partOfSpeech = "phrase",
+                    exampleSentence = "Good evening everyone.",
+                    exampleTranslation = "Chao buoi toi moi nguoi.",
+                    lessonId = 1,
+                    difficulty = 1,
+                    category = "greetings"
+                ),
+                WordEntity(
+                    id = 1004,
+                    word = "good night",
+                    translation = "chuc ngu ngon",
+                    pronunciation = "gud nait",
+                    partOfSpeech = "phrase",
+                    exampleSentence = "Good night and sweet dreams.",
+                    exampleTranslation = "Chuc ngu ngon va mo dep.",
+                    lessonId = 1,
+                    difficulty = 1,
+                    category = "greetings"
+                ),
+                WordEntity(
+                    id = 1005,
+                    word = "nice",
+                    translation = "tot, de chiu",
+                    pronunciation = "nais",
+                    partOfSpeech = "adjective",
+                    exampleSentence = "It is nice to meet you.",
+                    exampleTranslation = "Rat vui duoc gap ban.",
+                    lessonId = 1,
+                    difficulty = 1,
+                    category = "introductions"
+                ),
+                WordEntity(
+                    id = 1006,
+                    word = "meet",
+                    translation = "gap",
+                    pronunciation = "meet",
+                    partOfSpeech = "verb",
+                    exampleSentence = "I want to meet new friends.",
+                    exampleTranslation = "Toi muon gap ban moi.",
+                    lessonId = 1,
+                    difficulty = 1,
+                    category = "introductions"
+                ),
+                WordEntity(
+                    id = 1007,
+                    word = "sorry",
+                    translation = "xin loi",
+                    pronunciation = "SOR-ree",
+                    partOfSpeech = "adjective",
+                    exampleSentence = "I am sorry for being late.",
+                    exampleTranslation = "Toi xin loi vi den tre.",
+                    lessonId = 1,
+                    difficulty = 1,
+                    category = "politeness"
+                ),
+                WordEntity(
+                    id = 1008,
+                    word = "excuse me",
+                    translation = "xin phep / xin loi",
+                    pronunciation = "ex-kyooz mee",
+                    partOfSpeech = "phrase",
+                    exampleSentence = "Excuse me, where is the bus stop?",
+                    exampleTranslation = "Xin loi, tram xe o dau?",
+                    lessonId = 1,
+                    difficulty = 1,
+                    category = "politeness"
+                )
             )
         }
         private fun getInitialExercises(): List<ExerciseEntity> {
@@ -632,6 +730,33 @@ abstract class AppDatabase : RoomDatabase() {
                     correctAnswer = "no",
                     optionA = "no", optionB = "yes", optionC = "hello", optionD = "thank you",
                     order = 8, difficulty = 1
+                ),
+                ExerciseEntity(
+                    lessonId = 1, wordId = 1001, type = "MULTIPLE_CHOICE",
+                    question = "How do you say 'chao buoi sang'?",
+                    correctAnswer = "good morning",
+                    optionA = "good morning", optionB = "good evening", optionC = "good night", optionD = "goodbye",
+                    order = 9, difficulty = 1
+                ),
+                ExerciseEntity(
+                    lessonId = 1, wordId = 1005, type = "FILL_BLANK",
+                    question = "It is ____ to meet you.",
+                    correctAnswer = "nice",
+                    hint = "Think of a polite compliment",
+                    order = 10, difficulty = 1
+                ),
+                ExerciseEntity(
+                    lessonId = 1, wordId = 1007, type = "LISTENING",
+                    question = "Choose the phrase meaning 'xin loi'",
+                    correctAnswer = "sorry",
+                    optionA = "thank you", optionB = "sorry", optionC = "please", optionD = "excuse me",
+                    order = 11, difficulty = 1
+                ),
+                ExerciseEntity(
+                    lessonId = 1, wordId = 1004, type = "TRANSLATION",
+                    question = "Dich: Chuc ngu ngon.",
+                    correctAnswer = "Good night",
+                    order = 12, difficulty = 1
                 ),
                 
                 // Lesson 2 - Basics 2
