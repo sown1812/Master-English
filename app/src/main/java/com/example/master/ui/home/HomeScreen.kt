@@ -76,6 +76,7 @@ fun HomeRoute(homeViewModel: HomeViewModel) {
 
     HomeScreen(
         state = state,
+        onFlashcardClick = { homeViewModel.onFlashcardsClicked() },
         onPlayClick = { homeViewModel.onPlayClicked() },
         onDailyChallengeClick = { homeViewModel.onDailyChallengeClicked() },
         onOpenAchievements = { homeViewModel.onAchievementsClicked() },
@@ -90,6 +91,7 @@ fun HomeRoute(homeViewModel: HomeViewModel) {
 fun HomeScreen(
     state: HomeUiState,
     modifier: Modifier = Modifier,
+    onFlashcardClick: () -> Unit = {},
     onPlayClick: () -> Unit = {},
     onDailyChallengeClick: () -> Unit = {},
     onOpenAchievements: () -> Unit = {},
@@ -127,6 +129,7 @@ fun HomeScreen(
                 difficulty = state.difficulty,
                 progress = state.progress,
                 maxLevel = state.maxLevel,
+                onFlashcardClick = onFlashcardClick,
                 onPlayClick = onPlayClick
             )
             DailyChallengeCard(
@@ -278,6 +281,7 @@ private fun HeroCard(
     difficulty: Difficulty,
     progress: Float,
     maxLevel: Int,
+    onFlashcardClick: () -> Unit,
     onPlayClick: () -> Unit
 ) {
     Card(
@@ -314,19 +318,34 @@ private fun HeroCard(
                     color = Color(0xFFFA7CDE)
                 )
                 Text(
-                    text = "Tiến độ: ${(progress * maxLevel).toInt()} / $maxLevel cấp độ",
+                    text = "Tien do: ${(progress * maxLevel).toInt()} / $maxLevel cap do",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF6E3C72)
                 )
-                Button(
-                    onClick = onPlayClick,
-                    shape = RoundedCornerShape(50),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6F91)),
-                    modifier = Modifier.fillMaxWidth()
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text(text = "Bắt đầu học", fontWeight = FontWeight.Bold)
+                    Button(
+                        onClick = onPlayClick,
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6F91)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Bat dau hoc", fontWeight = FontWeight.Bold)
+                    }
+                    Button(
+                        onClick = onFlashcardClick,
+                        shape = RoundedCornerShape(50),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4C6FFF)),
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = null)
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(text = "Flashcard", fontWeight = FontWeight.Bold)
+                    }
                 }
             }
             Icon(
@@ -341,7 +360,6 @@ private fun HeroCard(
         }
     }
 }
-
 @Composable
 private fun DifficultyBadge(difficulty: Difficulty) {
     Surface(

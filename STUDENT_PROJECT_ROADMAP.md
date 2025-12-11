@@ -46,6 +46,34 @@ Tạo ứng dụng học tiếng Anh **đơn giản nhưng hoàn chỉnh** cho �
    - Leaderboard: Global (week/month/all-time), Friends, Guild; thuong XP + badge.
    - Currency: Coins free (hint/power-up), Gems premium (freeze, booster, avatar).
 
+### 2.3 Achievements & Badges System
+- Learning Achievements:
+  - "First Steps": Hoan thanh bai hoc dau tien
+  - "Vocabulary Novice": Hoc 100 tu
+  - "Vocabulary Expert": Hoc 500 tu
+  - "Vocabulary Master": Hoc 1000 tu
+  - "Grammar Foundation": Hoan thanh tat ca grammar A1-A2
+  - "Grammar Guru": Hoan thanh tat ca grammar quests
+  - "Listening Pro": 100 bai listening hoan thanh
+  - "Speaking Champion": 100 bai speaking practice
+  - "Writing Wizard": 50 bai writing hoan thanh
+- Quest Achievements:
+  - "Quest Starter": Hoan thanh Unit dau tien
+  - "Quest Warrior": Hoan thanh 10 Units
+  - "Quest Master": Hoan thanh 1 lo trinh hoan chinh
+  - "Multi-Quest Hero": Hoc 2+ lo trinh dong thoi
+  - "Career Expert": Hoan thanh 1 specialization module
+- Social Achievements:
+  - "Team Player": Tham gia Guild
+  - "Guild Leader": Tao Guild va co 10+ members
+  - "Helpful Mentor": Giup do 10 nguoi hoc khac
+  - "Social Butterfly": Ket ban voi 20 nguoi
+- Challenge Achievements:
+  - "Perfect Week": 7 ngay lien tiep diem toi da
+  - "Speed Runner": Hoan thanh 10 bai trong 1 ngay
+  - "Night Owl": Hoc sau 10pm
+  - "Early Bird": Hoc truoc 7am
+
 3. Quest IELTS (rut gon)
    - A1-A2 Foundation: Personal info, family, routines, hobby; boss: Speaking Part 1 sim.
    - B1-B2 Intermediate: Writing Task 1 (charts/process), Task 2 (opinion/discussion), Listening full tests.

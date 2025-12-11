@@ -9,4 +9,5 @@ sealed class HomeNavigationEvent {
     data class NavigateToBooster(val booster: BoosterItem) : HomeNavigationEvent()
     data class ThemeApplied(val themeName: String) : HomeNavigationEvent()
     data class ShowMessage(val message: String) : HomeNavigationEvent()
+    data class NavigateToFlashcards(val lessonId: Int) : HomeNavigationEvent()
 }

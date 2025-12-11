@@ -34,4 +34,13 @@ interface ApiService {
 
     @POST("/sync")
     suspend fun sync(@Body payload: SyncPayload): SyncResponse
+
+    @GET("/lessons")
+    suspend fun getLessons(): List<LessonRemote>
+
+    @GET("/lessons/{id}/words")
+    suspend fun getWordsByLesson(@Path("id") lessonId: Int): List<WordRemote>
+
+    @GET("/lessons/{id}/exercises")
+    suspend fun getExercisesByLesson(@Path("id") lessonId: Int): List<ExerciseRemote>
 }

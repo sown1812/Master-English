@@ -76,30 +76,8 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
         
-        private suspend fun seedDatabase(database: AppDatabase) {
-            val lessonDao = database.lessonDao()
-            val wordDao = database.wordDao()
-            val exerciseDao = database.exerciseDao()
-            
-            val payload = loadSeedFromAssets() ?: SeedPayload(
-                lessons = getInitialLessons(),
-                words = getInitialWords(),
-                exercises = getInitialExercises()
-            )
-            
-            val currentLessons = runCatching { lessonDao.getTotalLessonsCount() }.getOrDefault(0)
-            val currentWords = runCatching { wordDao.getTotalWordsCount() }.getOrDefault(0)
-            val currentExercises = runCatching { exerciseDao.getTotalExercisesCount() }.getOrDefault(0)
-            
-            if (currentLessons < payload.lessons.size && payload.lessons.isNotEmpty()) {
-                lessonDao.insertLessons(payload.lessons)
-            }
-            if (currentWords < payload.words.size && payload.words.isNotEmpty()) {
-                wordDao.insertWords(payload.words)
-            }
-            if (currentExercises < payload.exercises.size && payload.exercises.isNotEmpty()) {
-                exerciseDao.insertExercises(payload.exercises)
-            }
+        private suspend fun seedDatabase(@Suppress("UNUSED_PARAMETER") database: AppDatabase) {
+            // Lesson content now comes from the backend via ContentSyncManager; skip offline seeding.
         }
 
         val MIGRATION_1_2 = object : Migration(1, 2) {

@@ -53,6 +53,8 @@ import com.example.master.ui.dashboard.DashboardViewModel
 import com.example.master.ui.home.HomeNavigationEvent
 import com.example.master.ui.home.HomeRoute
 import com.example.master.ui.home.HomeViewModel
+import com.example.master.ui.flashcard.FlashcardScreen
+import com.example.master.ui.flashcard.FlashcardViewModel
 import com.example.master.ui.lesson.LessonEvent
 import com.example.master.ui.lesson.LessonScreen
 import com.example.master.ui.lesson.LessonViewModel
@@ -193,6 +195,7 @@ fun MasterApp() {
                             HomeNavigationEvent.NavigateToStore -> navController.navigate("store")
                             is HomeNavigationEvent.NavigateToQuest -> navController.navigate("store")
                             is HomeNavigationEvent.NavigateToBooster -> navController.navigate("store")
+                            is HomeNavigationEvent.NavigateToFlashcards -> navController.navigate("flashcards/${event.lessonId}")
                             is HomeNavigationEvent.ThemeApplied -> {
                                 Toast.makeText(context, "Theme applied: ${event.themeName}", Toast.LENGTH_SHORT).show()
                             }
@@ -227,6 +230,35 @@ fun MasterApp() {
                     stateFlow = viewModel.uiState,
                     onStart = viewModel::startDailyChallenge,
                     onSubmit = { viewModel.submitDailyChallenge(score = 50) }
+                )
+            }
+
+            composable(
+                route = "flashcards/{lessonId}",
+                arguments = listOf(navArgument("lessonId") { type = NavType.IntType; defaultValue = 1 })
+            ) {
+                val viewModel: FlashcardViewModel = hiltViewModel()
+                val context = LocalContext.current
+                val audioPlayer = remember { AudioPlayer(context) }
+                val ttsManager = remember { TTSManager(context) }
+
+                DisposableEffect(Unit) {
+                    onDispose {
+                        audioPlayer.stop()
+                        ttsManager.release()
+                    }
+                }
+
+                FlashcardScreen(
+                    viewModel = viewModel,
+                    onBack = { navController.popBackStack() },
+                    onPlayAudio = { text, audioUrl, slow ->
+                        if (!audioUrl.isNullOrBlank()) {
+                            audioPlayer.play(audioUrl)
+                        } else {
+                            ttsManager.speak(text, speed = if (slow) 0.7f else 1.0f)
+                        }
+                    }
                 )
             }
 

@@ -18,6 +18,9 @@ interface ExerciseDao {
     
     @Query("SELECT COUNT(*) FROM exercises WHERE lessonId = :lessonId")
     suspend fun getExercisesCountByLesson(lessonId: Int): Int
+
+    @Query("SELECT COUNT(*) FROM exercises WHERE lessonId = :lessonId AND type = :type")
+    suspend fun getExercisesCountByLessonAndType(lessonId: Int, type: String): Int
     
     @Query("SELECT COUNT(*) FROM exercises")
     suspend fun getTotalExercisesCount(): Int
@@ -36,4 +39,7 @@ interface ExerciseDao {
     
     @Query("DELETE FROM exercises WHERE lessonId = :lessonId")
     suspend fun deleteExercisesByLesson(lessonId: Int)
+
+    @Query("DELETE FROM exercises")
+    suspend fun deleteAllExercises()
 }

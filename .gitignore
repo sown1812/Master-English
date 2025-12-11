@@ -13,3 +13,14 @@
 .externalNativeBuild
 .cxx
 local.properties
+# Node/JS artifacts
+node_modules/
+
+# Build outputs & logs
+build_output.txt
+build_log*.txt
+*.log
+
+# Temporary backups
+backup_*.bak
+backup_new_files/

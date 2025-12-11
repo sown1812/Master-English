@@ -21,6 +21,12 @@ interface UserProgressDao {
     
     @Query("SELECT COUNT(*) FROM user_progress WHERE userId = :userId AND isCompleted = 1")
     suspend fun getCompletedCount(userId: String): Int
+
+    @Query("SELECT DISTINCT lessonId FROM user_progress WHERE userId = :userId AND isCompleted = 1")
+    suspend fun getCompletedLessonIds(userId: String): List<Int>
+
+    @Query("SELECT COUNT(*) FROM user_progress WHERE userId = :userId AND isCompleted = 1 AND completedAt >= :since")
+    suspend fun getCompletedCountSince(userId: String, since: Long): Int
     
     @Query("SELECT * FROM user_progress WHERE userId = :userId AND nextReviewDate <= :currentDate")
     suspend fun getDueReviews(userId: String, currentDate: Long): List<UserProgressEntity>

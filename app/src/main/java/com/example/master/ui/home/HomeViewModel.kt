@@ -27,6 +27,10 @@ class HomeViewModel @Inject constructor() : ViewModel() {
         emitEvent(HomeNavigationEvent.NavigateToDailyChallenge(challenge.title))
     }
 
+    fun onFlashcardsClicked() {
+        emitEvent(HomeNavigationEvent.NavigateToFlashcards(_uiState.value.level))
+    }
+
     fun onAchievementsClicked() {
         emitEvent(HomeNavigationEvent.NavigateToAchievements)
     }

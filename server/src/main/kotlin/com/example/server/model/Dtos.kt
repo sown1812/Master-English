@@ -168,3 +168,34 @@ data class LeaderboardEntryDto(
     val coins: Int,
     val streakDays: Int
 )
+
+@Serializable
+data class AchievementDto(
+    val id: Int,
+    val userId: String,
+    val achievementType: String,
+    val title: String,
+    val description: String,
+    val isUnlocked: Boolean,
+    val unlockedAt: Long?,
+    val progress: Int,
+    val target: Int,
+    val xpReward: Int,
+    val coinsReward: Int,
+    val badgeUrl: String? = null,
+    val createdAt: Long
+)
+
+@Serializable
+data class SyncPayload(
+    val user: UserDto,
+    val progress: List<ProgressDto>,
+    val achievements: List<AchievementDto>
+)
+
+@Serializable
+data class SyncResponse(
+    val user: UserDto? = null,
+    val progress: List<ProgressDto>? = null,
+    val achievements: List<AchievementDto>? = null
+)

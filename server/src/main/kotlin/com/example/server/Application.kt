@@ -8,6 +8,7 @@ import com.example.server.routes.userRoutes
 import com.example.server.routes.wordRoutes
 import com.example.server.routes.gameStateRoutes
 import com.example.server.routes.leaderboardRoutes
+import com.example.server.routes.syncRoutes
 import com.typesafe.config.ConfigFactory
 import io.ktor.serialization.kotlinx.json.*
 import io.ktor.server.application.*
@@ -47,6 +48,7 @@ fun Application.module() {
             userRoutes()
             progressRoutes()
             gameStateRoutes()
+            syncRoutes()
         }
     }
 }

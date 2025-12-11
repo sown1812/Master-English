@@ -21,6 +21,9 @@ interface LessonDao {
     
     @Query("SELECT * FROM lessons WHERE difficulty = :difficulty ORDER BY `order`")
     fun getLessonsByDifficulty(difficulty: String): Flow<List<LessonEntity>>
+
+    @Query("SELECT * FROM lessons WHERE id IN (:ids)")
+    suspend fun getLessonsByIds(ids: List<Int>): List<LessonEntity>
     
     @Query("SELECT COUNT(*) FROM lessons")
     suspend fun getTotalLessonsCount(): Int

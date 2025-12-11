@@ -42,6 +42,9 @@ interface WordDao {
     
     @Delete
     suspend fun deleteWord(word: WordEntity)
+
+    @Query("DELETE FROM words WHERE lessonId = :lessonId")
+    suspend fun deleteWordsByLesson(lessonId: Int)
     
     @Query("DELETE FROM words")
     suspend fun deleteAllWords()
