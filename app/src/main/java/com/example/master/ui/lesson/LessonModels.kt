@@ -106,6 +106,18 @@ sealed class Exercise {
         val options: List<PictureOption>,
         val selectedOptionId: String? = null
     ) : Exercise()
+
+    data class Flashcard(
+        override val id: Int,
+        override val question: String,
+        override val correctAnswer: String,
+        override val word: WordEntity?,
+        override val explanation: String?,
+        val frontText: String,
+        val backText: String,
+        val isFlipped: Boolean = false,
+        val isRemembered: Boolean? = null
+    ) : Exercise()
 }
 
 data class MatchPair(
@@ -125,6 +137,8 @@ sealed class LessonEvent {
     data class PairMatched(val left: String, val right: String) : LessonEvent()
     data class PictureOptionSelected(val optionId: String) : LessonEvent()
     data class SpeakingAnswerCaptured(val transcript: String) : LessonEvent()
+    data class FlashcardFlipped(val flipped: Boolean) : LessonEvent()
+    data class FlashcardRated(val remembered: Boolean) : LessonEvent()
     object SubmitAnswer : LessonEvent()
     object NextExercise : LessonEvent()
     object ShowHint : LessonEvent()

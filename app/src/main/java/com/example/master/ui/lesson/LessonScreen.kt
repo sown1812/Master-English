@@ -42,6 +42,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
+import com.example.master.ui.lesson.components.FlashcardExercise
 
 @Composable
 fun LessonScreen(
@@ -223,6 +224,17 @@ fun LessonScreen(
                                 },
                                 showResult = uiState.showResult,
                                 isCorrect = uiState.lastAnswerCorrect
+                            )
+                        }
+
+                        is Exercise.Flashcard -> {
+                            FlashcardExercise(
+                                exercise = currentExercise,
+                                showResult = uiState.showResult,
+                                onFlip = { flipped -> viewModel.onEvent(LessonEvent.FlashcardFlipped(flipped)) },
+                                onRemembered = { remembered ->
+                                    viewModel.onEvent(LessonEvent.FlashcardRated(remembered))
+                                }
                             )
                         }
                         

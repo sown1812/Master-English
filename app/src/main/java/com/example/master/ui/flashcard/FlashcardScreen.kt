@@ -81,6 +81,7 @@ fun FlashcardScreen(
                 onUnknown = viewModel::markUnknown,
                 onShuffle = viewModel::shuffleDeck,
                 onRestart = viewModel::restartDeck,
+                onReviewUnknown = viewModel::reviewUnknownOnly,
                 onPlayAudio = onPlayAudio
             )
         }
@@ -96,6 +97,7 @@ private fun FlashcardContent(
     onUnknown: () -> Unit,
     onShuffle: () -> Unit,
     onRestart: () -> Unit,
+    onReviewUnknown: () -> Unit,
     onPlayAudio: (text: String, audioUrl: String?, slow: Boolean) -> Unit
 ) {
     Column(
@@ -124,9 +126,12 @@ private fun FlashcardContent(
 
         ActionButtons(
             isCompleted = state.isCompleted,
+            hasUnknown = state.unknownPool.isNotEmpty(),
+            reviewingUnknown = state.reviewingUnknown,
             onUnknown = onUnknown,
             onKnown = onKnown,
-            onRestart = onRestart
+            onRestart = onRestart,
+            onReviewUnknown = onReviewUnknown
         )
     }
 }
@@ -259,20 +264,19 @@ private fun FlashcardView(
                     color = Color(0xFF6B7280)
                 )
             }
-            return
-        }
-
-        AnimatedContent(
-            targetState = state.isFlipped,
-            transitionSpec = {
-                (fadeIn(tween(150)) togetherWith fadeOut(tween(150)))
-            },
-            label = "flashcardFlip"
-        ) { flipped ->
-            if (!flipped) {
-                FlashcardFront(card = card, onPlayAudio = onPlayAudio)
-            } else {
-                FlashcardBack(card = card)
+        } else {
+            AnimatedContent(
+                targetState = state.isFlipped,
+                transitionSpec = {
+                    (fadeIn(tween(150)) togetherWith fadeOut(tween(150)))
+                },
+                label = "flashcardFlip"
+            ) { flipped ->
+                if (!flipped) {
+                    FlashcardFront(card = card, onPlayAudio = onPlayAudio)
+                } else {
+                    FlashcardBack(card = card)
+                }
             }
         }
     }
@@ -368,12 +372,20 @@ private fun FlashcardBack(card: Flashcard) {
 @Composable
 private fun ActionButtons(
     isCompleted: Boolean,
+    hasUnknown: Boolean,
+    reviewingUnknown: Boolean,
     onUnknown: () -> Unit,
     onKnown: () -> Unit,
-    onRestart: () -> Unit
+    onRestart: () -> Unit,
+    onReviewUnknown: () -> Unit
 ) {
     if (isCompleted) {
-        CompletionCard(onRestart = onRestart)
+        CompletionCard(
+            onRestart = onRestart,
+            onReviewUnknown = onReviewUnknown,
+            hasUnknown = hasUnknown,
+            reviewingUnknown = reviewingUnknown
+        )
         return
     }
 
@@ -407,7 +419,12 @@ private fun ActionButtons(
 }
 
 @Composable
-private fun CompletionCard(onRestart: () -> Unit) {
+private fun CompletionCard(
+    onRestart: () -> Unit,
+    onReviewUnknown: () -> Unit,
+    hasUnknown: Boolean,
+    reviewingUnknown: Boolean
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp),
@@ -433,6 +450,18 @@ private fun CompletionCard(onRestart: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(text = "Ôn lại thẻ", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+            Button(
+                onClick = onReviewUnknown,
+                enabled = hasUnknown,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFB7185)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = if (reviewingUnknown) "Đang ôn thẻ sai" else "Ôn thẻ sai",
+                    color = Color.White,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }

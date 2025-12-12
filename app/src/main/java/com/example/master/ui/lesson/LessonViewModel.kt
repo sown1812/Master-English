@@ -4,6 +4,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.master.data.local.entity.UserProgressEntity
+import com.example.master.data.local.entity.WordEntity
 import com.example.master.data.repository.LearningRepository
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -120,6 +121,17 @@ class LessonViewModel @Inject constructor(
                                 explanation = exerciseEntity.explanation,
                                 options = buildPictureOptions(exerciseEntity, words, word)
                             )
+
+                            "FLASHCARD" -> Exercise.Flashcard(
+                                id = exerciseEntity.id,
+                                question = exerciseEntity.question.ifBlank { word?.word ?: "Review this word" },
+                                correctAnswer = exerciseEntity.correctAnswer.ifBlank { word?.translation ?: "" },
+                                word = word,
+                                explanation = exerciseEntity.explanation,
+                                frontText = word?.word ?: exerciseEntity.question,
+                                backText = word?.translation
+                                    ?: exerciseEntity.correctAnswer.ifBlank { "Check the definition" }
+                            )
                             
                             else -> Exercise.MultipleChoice(
                                 id = exerciseEntity.id,
@@ -131,7 +143,10 @@ class LessonViewModel @Inject constructor(
                             )
                         }
                     }
-                
+                    .let { built ->
+                        if (built.isNotEmpty()) built else buildGeneratedExercises(words)
+                    }
+
                 _uiState.update {
                     it.copy(
                         lessonTitle = lesson?.title ?: "Lesson",
@@ -153,6 +168,8 @@ class LessonViewModel @Inject constructor(
             is LessonEvent.PairMatched -> handlePairMatched(event.left, event.right)
             is LessonEvent.PictureOptionSelected -> handlePictureOptionSelected(event.optionId)
             is LessonEvent.SpeakingAnswerCaptured -> handleSpeakingTranscript(event.transcript)
+            is LessonEvent.FlashcardFlipped -> handleFlashcardFlipped(event.flipped)
+            is LessonEvent.FlashcardRated -> handleFlashcardRated(event.remembered)
             LessonEvent.SubmitAnswer -> submitAnswer()
             LessonEvent.NextExercise -> nextExercise()
             LessonEvent.ShowHint -> showHint()
@@ -265,6 +282,44 @@ class LessonViewModel @Inject constructor(
             )
         }
     }
+
+    private fun handleFlashcardFlipped(flipped: Boolean) {
+        val currentExercise = getCurrentExercise() as? Exercise.Flashcard ?: return
+        val index = _uiState.value.currentExerciseIndex
+        
+        val updatedExercise = currentExercise.copy(isFlipped = flipped)
+        val updatedExercises = _uiState.value.exercises.toMutableList()
+        updatedExercises[index] = updatedExercise
+        
+        _uiState.update {
+            it.copy(
+                exercises = updatedExercises,
+                feedbackMessage = null,
+                explanation = null
+            )
+        }
+    }
+
+    private fun handleFlashcardRated(remembered: Boolean) {
+        val currentExercise = getCurrentExercise() as? Exercise.Flashcard ?: return
+        val index = _uiState.value.currentExerciseIndex
+        
+        val updatedExercise = currentExercise.copy(
+            isRemembered = remembered,
+            isFlipped = true
+        )
+        val updatedExercises = _uiState.value.exercises.toMutableList()
+        updatedExercises[index] = updatedExercise
+        
+        _uiState.update {
+            it.copy(
+                exercises = updatedExercises,
+                isAnswerReady = true,
+                feedbackMessage = null,
+                explanation = null
+            )
+        }
+    }
     
     private fun submitAnswer() {
         val currentExercise = getCurrentExercise() ?: return
@@ -320,6 +375,7 @@ class LessonViewModel @Inject constructor(
                         is Exercise.Matching -> nextExercise.selectedPairs.isNotEmpty()
                         is Exercise.PictureMatching -> nextExercise.selectedOptionId != null
                         is Exercise.Speaking -> nextExercise.recognizedText.isNotBlank()
+                        is Exercise.Flashcard -> nextExercise.isRemembered != null
                     }
                 )
             }
@@ -407,6 +463,7 @@ class LessonViewModel @Inject constructor(
             is Exercise.Listening -> exercise.copy(selectedAnswer = null)
             is Exercise.Speaking -> exercise.copy(recognizedText = "")
             is Exercise.PictureMatching -> exercise.copy(selectedOptionId = null)
+            is Exercise.Flashcard -> exercise.copy(isFlipped = false, isRemembered = null)
         }
     }
     
@@ -500,5 +557,43 @@ class LessonViewModel @Inject constructor(
         } else parsed
         
         return fallback.shuffled()
+    }
+
+    private fun buildGeneratedExercises(words: List<WordEntity>): List<Exercise> {
+        if (words.isEmpty()) return emptyList()
+
+        val wordPool = words.shuffled().take(6)
+        val exercises = mutableListOf<Exercise>()
+
+        wordPool.forEachIndexed { idx, word ->
+            val options = (listOf(word.translation) + words.filter { it.id != word.id }.map { it.translation })
+                .distinct()
+                .shuffled()
+                .take(4)
+                .ifEmpty { listOf(word.translation) }
+
+            exercises.add(
+                Exercise.MultipleChoice(
+                    id = -(idx + 1),
+                    question = "Chọn nghĩa của \"${word.word}\"",
+                    correctAnswer = word.translation,
+                    word = word,
+                    explanation = word.exampleTranslation,
+                    options = options
+                )
+            )
+
+            exercises.add(
+                Exercise.Translation(
+                    id = -(idx + 100),
+                    question = "Dịch: ${word.translation}",
+                    correctAnswer = word.word,
+                    word = word,
+                    explanation = word.exampleTranslation
+                )
+            )
+        }
+
+        return exercises
     }
 }

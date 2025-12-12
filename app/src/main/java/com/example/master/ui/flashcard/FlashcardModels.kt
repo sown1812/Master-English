@@ -19,13 +19,17 @@ data class FlashcardUiState(
     val lessonId: Int = 0,
     val deckTitle: String = "",
     val cards: List<Flashcard> = emptyList(),
+    val queue: List<Flashcard> = emptyList(),
     val currentIndex: Int = 0,
     val isFlipped: Boolean = false,
     val knownCount: Int = 0,
     val unknownCount: Int = 0,
+    val unknownPool: List<Flashcard> = emptyList(),
+    val repetitionCounts: Map<Int, Int> = emptyMap(),
+    val reviewingUnknown: Boolean = false,
     val isCompleted: Boolean = false,
     val isLoading: Boolean = true
 ) {
-    val totalCards: Int get() = cards.size
-    val currentCard: Flashcard? get() = cards.getOrNull(currentIndex)
+    val totalCards: Int get() = queue.size
+    val currentCard: Flashcard? get() = queue.getOrNull(currentIndex)
 }

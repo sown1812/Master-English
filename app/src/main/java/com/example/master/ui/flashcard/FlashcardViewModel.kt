@@ -53,10 +53,14 @@ class FlashcardViewModel @Inject constructor(
                 _uiState.update {
                     it.copy(
                         cards = cards,
+                        queue = cards,
                         currentIndex = 0,
                         isFlipped = false,
                         knownCount = 0,
                         unknownCount = 0,
+                        unknownPool = emptyList(),
+                        repetitionCounts = emptyMap(),
+                        reviewingUnknown = false,
                         isCompleted = cards.isEmpty(),
                         isLoading = false
                     )
@@ -70,22 +74,56 @@ class FlashcardViewModel @Inject constructor(
     }
 
     fun markKnown() {
+        val current = _uiState.value.currentCard
+        if (current != null) {
+            _uiState.update { state ->
+                state.copy(
+                    unknownPool = state.unknownPool.filterNot { it.id == current.id }
+                )
+            }
+        }
         moveToNext(knownDelta = 1)
     }
 
     fun markUnknown() {
+        val current = _uiState.value.currentCard ?: return
+        val currentCounts = _uiState.value.repetitionCounts
+        val repeats = currentCounts[current.id] ?: 0
+        val canRequeue = repeats < 2
+
+        _uiState.update { state ->
+            val newQueue = if (canRequeue) {
+                state.queue + current
+            } else state.queue
+
+            val newUnknown = if (state.unknownPool.any { it.id == current.id }) {
+                state.unknownPool
+            } else {
+                state.unknownPool + current
+            }
+
+            state.copy(
+                queue = newQueue,
+                unknownPool = newUnknown,
+                repetitionCounts = state.repetitionCounts + (current.id to (repeats + if (canRequeue) 1 else 0))
+            )
+        }
+
         moveToNext(unknownDelta = 1)
     }
 
     fun shuffleDeck() {
         _uiState.update { state ->
             state.copy(
-                cards = state.cards.shuffled(),
+                queue = state.queue.shuffled(),
                 currentIndex = 0,
                 isFlipped = false,
                 knownCount = 0,
                 unknownCount = 0,
-                isCompleted = state.cards.isEmpty()
+                isCompleted = state.queue.isEmpty(),
+                reviewingUnknown = false,
+                unknownPool = emptyList(),
+                repetitionCounts = emptyMap()
             )
         }
     }
@@ -93,11 +131,31 @@ class FlashcardViewModel @Inject constructor(
     fun restartDeck() {
         _uiState.update {
             it.copy(
+                queue = it.cards,
                 currentIndex = 0,
                 isFlipped = false,
                 knownCount = 0,
                 unknownCount = 0,
+                unknownPool = emptyList(),
+                repetitionCounts = emptyMap(),
+                reviewingUnknown = false,
                 isCompleted = it.cards.isEmpty()
+            )
+        }
+    }
+
+    fun reviewUnknownOnly() {
+        _uiState.update { state ->
+            val pool = if (state.unknownPool.isNotEmpty()) state.unknownPool else state.cards
+            state.copy(
+                queue = pool,
+                currentIndex = 0,
+                isFlipped = false,
+                knownCount = 0,
+                unknownCount = 0,
+                repetitionCounts = emptyMap(),
+                reviewingUnknown = true,
+                isCompleted = pool.isEmpty()
             )
         }
     }
@@ -105,14 +163,14 @@ class FlashcardViewModel @Inject constructor(
     private fun moveToNext(knownDelta: Int = 0, unknownDelta: Int = 0) {
         _uiState.update { state ->
             val nextIndex = state.currentIndex + 1
-            val completed = nextIndex >= state.cards.size
+            val completed = nextIndex >= state.queue.size
 
             state.copy(
                 currentIndex = if (completed) state.currentIndex else nextIndex,
                 knownCount = state.knownCount + knownDelta,
                 unknownCount = state.unknownCount + unknownDelta,
                 isFlipped = false,
-                isCompleted = completed || state.cards.isEmpty()
+                isCompleted = completed || state.queue.isEmpty()
             )
         }
     }

@@ -9,27 +9,44 @@ import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Leaderboard
+import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Store
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
-import androidx.compose.material3.Icon
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -43,6 +60,7 @@ import androidx.credentials.CredentialManager
 import androidx.credentials.GetCredentialRequest
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.master.R
+import com.example.master.auth.AuthState
 import com.example.master.auth.AuthViewModel
 import com.example.master.auth.LoginScreen
 import com.example.master.auth.RegisterScreen
@@ -60,6 +78,12 @@ import com.example.master.ui.lesson.LessonScreen
 import com.example.master.ui.lesson.LessonViewModel
 import com.example.master.ui.notifications.NotificationsRoute
 import com.example.master.ui.notifications.NotificationsViewModel
+import com.example.master.ui.practice.PracticeScreen
+import com.example.master.ui.profile.ProfileScreen
+import com.example.master.ui.profile.ProfileViewModel
+import com.example.master.ui.sync.SyncViewModel
+import com.example.master.ui.settings.SettingsScreen
+import com.example.master.ui.settings.SettingsViewModel
 import com.example.master.ui.store.DailyChallengeScreen
 import com.example.master.ui.store.StoreRoute
 import com.example.master.ui.store.StoreViewModel
@@ -67,8 +91,6 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import kotlinx.coroutines.launch
 import java.util.Locale
-import androidx.navigation.NavOptionsBuilder
-import androidx.navigation.NavGraph.Companion.findStartDestination
 
 private data class BottomDestination(
     val route: String,
@@ -84,10 +106,12 @@ fun MasterApp() {
 
     val bottomDestinations = remember {
         listOf(
-            BottomDestination("home", "Home", Icons.Filled.Home),
-            BottomDestination("dashboard", "Dashboard", Icons.Filled.Dashboard),
-            BottomDestination("notifications", "Alerts", Icons.Filled.Notifications),
-            BottomDestination("store", "Store", Icons.Filled.Store)
+            BottomDestination("learning", "Learning Path", Icons.Filled.AutoAwesome),
+            BottomDestination("practice", "Practice", Icons.Filled.Star),
+            BottomDestination("profile", "Profile", Icons.Filled.Person),
+            BottomDestination("leaderboard", "Leaderboard", Icons.Filled.Leaderboard),
+            BottomDestination("shop", "Shop", Icons.Filled.Store),
+            BottomDestination("settings", "Settings", Icons.Filled.Settings)
         )
     }
 
@@ -118,9 +142,46 @@ fun MasterApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "login",
+            startDestination = "onboarding",
             modifier = Modifier.padding(innerPadding)
         ) {
+            composable("onboarding") {
+                OnboardingScreen(
+                    onContinue = { navController.navigate("auth_gate") { popUpTo("onboarding") { inclusive = true } } },
+                    onLogin = { navController.navigate("login") { popUpTo("onboarding") { inclusive = true } } }
+                )
+            }
+
+            composable("auth_gate") {
+                val viewModel: AuthViewModel = hiltViewModel()
+                val syncViewModel: SyncViewModel = hiltViewModel()
+                val authState by viewModel.authState.collectAsState()
+
+                LaunchedEffect(authState) {
+                    when (authState) {
+                        is AuthState.Authenticated -> navController.navigate("learning") {
+                            popUpTo("auth_gate") { inclusive = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        AuthState.Unauthenticated -> navController.navigate("login") {
+                            popUpTo("auth_gate") { inclusive = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        AuthState.Loading -> Unit
+                    }
+                    if (authState is AuthState.Authenticated) {
+                        syncViewModel.syncAll()
+                    }
+                }
+
+                // Simple splash/loading while determining auth state
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+
             composable("login") {
                 val viewModel: AuthViewModel = hiltViewModel()
                 val context = LocalContext.current
@@ -131,7 +192,7 @@ fun MasterApp() {
                     viewModel = viewModel,
                     onNavigateToRegister = { navController.navigate("register") },
                     onLoginSuccess = {
-                        navController.navigate("home") {
+                        navController.navigate("learning") {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 inclusive = true
                                 saveState = true
@@ -170,7 +231,7 @@ fun MasterApp() {
                     viewModel = viewModel,
                     onNavigateToLogin = { navController.popBackStack() },
                     onRegisterSuccess = {
-                        navController.navigate("home") {
+                        navController.navigate("learning") {
                             popUpTo(navController.graph.findStartDestination().id) {
                                 inclusive = true
                                 saveState = true
@@ -182,7 +243,7 @@ fun MasterApp() {
                 )
             }
 
-            composable("home") {
+            composable("learning") {
                 val viewModel: HomeViewModel = hiltViewModel()
                 val context = LocalContext.current
 
@@ -191,10 +252,10 @@ fun MasterApp() {
                         when (event) {
                             is HomeNavigationEvent.NavigateToPlay -> navController.navigate("lesson/${event.level}")
                             is HomeNavigationEvent.NavigateToDailyChallenge -> navController.navigate("daily")
-                            HomeNavigationEvent.NavigateToAchievements -> navController.navigate("dashboard")
-                            HomeNavigationEvent.NavigateToStore -> navController.navigate("store")
-                            is HomeNavigationEvent.NavigateToQuest -> navController.navigate("store")
-                            is HomeNavigationEvent.NavigateToBooster -> navController.navigate("store")
+                            HomeNavigationEvent.NavigateToAchievements -> navController.navigate("leaderboard")
+                            HomeNavigationEvent.NavigateToStore -> navController.navigate("shop")
+                            is HomeNavigationEvent.NavigateToQuest -> navController.navigate("shop")
+                            is HomeNavigationEvent.NavigateToBooster -> navController.navigate("shop")
                             is HomeNavigationEvent.NavigateToFlashcards -> navController.navigate("flashcards/${event.lessonId}")
                             is HomeNavigationEvent.ThemeApplied -> {
                                 Toast.makeText(context, "Theme applied: ${event.themeName}", Toast.LENGTH_SHORT).show()
@@ -209,19 +270,51 @@ fun MasterApp() {
                 HomeRoute(homeViewModel = viewModel)
             }
 
-            composable("dashboard") {
+            composable("leaderboard") {
                 val viewModel: DashboardViewModel = hiltViewModel()
                 DashboardRoute(viewModel = viewModel)
+            }
+
+            composable("shop") {
+                val viewModel: StoreViewModel = hiltViewModel()
+                StoreRoute(viewModel = viewModel)
+            }
+
+            composable("practice") {
+                PracticeScreen(
+                    onStartDailyChallenge = { navController.navigate("daily") },
+                    onStartLesson = { lessonId -> navController.navigate("lesson/$lessonId") },
+                    onOpenFlashcards = { lessonId -> navController.navigate("flashcards/$lessonId") },
+                    onOpenLeaderboard = { navController.navigate("leaderboard") },
+                    onOpenShop = { navController.navigate("shop") }
+                )
+            }
+
+            composable("profile") {
+                val viewModel: ProfileViewModel = hiltViewModel()
+                ProfileScreen(viewModel = viewModel)
+            }
+
+            composable("settings") {
+                val viewModel: SettingsViewModel = hiltViewModel()
+                SettingsScreen(
+                    viewModel = viewModel,
+                    onLoggedOut = {
+                        navController.navigate("login") {
+                            popUpTo(navController.graph.findStartDestination().id) {
+                                inclusive = true
+                                saveState = false
+                            }
+                            launchSingleTop = true
+                            restoreState = false
+                        }
+                    }
+                )
             }
 
             composable("notifications") {
                 val viewModel: NotificationsViewModel = hiltViewModel()
                 NotificationsRoute(viewModel = viewModel)
-            }
-
-            composable("store") {
-                val viewModel: StoreViewModel = hiltViewModel()
-                StoreRoute(viewModel = viewModel)
             }
 
             composable("daily") {
@@ -350,8 +443,55 @@ private fun launchSpeechRecognizer(
 
 private fun shouldShowBottomBar(currentDestination: NavDestination?): Boolean {
     // Hide on auth screens, show everywhere else so users always have quick navigation
-    val hidden = setOf("login", "register")
+    val hidden = setOf("onboarding", "auth_gate", "login", "register")
     return currentDestination?.route !in hidden
+}
+
+@Composable
+private fun OnboardingScreen(
+    onContinue: () -> Unit,
+    onLogin: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color(0xFFEFF6FF)),
+        contentAlignment = Alignment.Center
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Text(
+                text = "Chào mừng đến Master English",
+                style = androidx.compose.material3.MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFF0F172A),
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = "Lộ trình cá nhân, luyện tập đa dạng, streak mỗi ngày.\nBật nhắc giờ để không bỏ lỡ.",
+                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                color = Color(0xFF475569),
+                textAlign = TextAlign.Center
+            )
+            Button(
+                onClick = onContinue,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Bắt đầu", color = Color.White, fontWeight = FontWeight.Bold)
+            }
+            Button(
+                onClick = onLogin,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE2E8F0)),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Tôi đã có tài khoản", color = Color(0xFF111827), fontWeight = FontWeight.Bold)
+            }
+        }
+    }
 }
 
 private suspend fun handleGoogleSignIn(

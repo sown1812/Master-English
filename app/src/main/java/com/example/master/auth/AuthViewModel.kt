@@ -4,7 +4,6 @@ import android.os.Parcelable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.master.core.user.UserProfile
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -28,9 +27,6 @@ class AuthViewModel @Inject constructor(
         savedStateHandle[KEY_UI_STATE] ?: AuthUiState()
     )
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
-
-    private val _userProfile = MutableStateFlow<UserProfile?>(null)
-    val userProfile: StateFlow<UserProfile?> = _userProfile.asStateFlow()
 
     fun onEmailChanged(email: String) {
         updateUiState { it.copy(email = email, emailError = null) }
@@ -73,7 +69,6 @@ class AuthViewModel @Inject constructor(
 
             when (val result = authManager.signIn(state.email, state.password)) {
                 is AuthResult.Success -> {
-                    loadUserProfile()
                     updateUiState {
                         it.copy(
                             isLoading = false,
@@ -133,7 +128,6 @@ class AuthViewModel @Inject constructor(
                 state.displayName
             )) {
                 is AuthResult.Success -> {
-                    loadUserProfile()
                     updateUiState {
                         it.copy(
                             isLoading = false,
@@ -166,7 +160,6 @@ class AuthViewModel @Inject constructor(
 
             when (val result = authManager.signInWithGoogle(idToken)) {
                 is AuthResult.Success -> {
-                    loadUserProfile()
                     updateUiState {
                         it.copy(
                             isLoading = false,
@@ -209,7 +202,6 @@ class AuthViewModel @Inject constructor(
                     updateUiState {
                         it.copy(
                             isLoading = false,
-                            successMessage = "Password reset email sent!",
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -227,10 +219,6 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun clearMessages() {
-        updateUiState { it.copy(errorMessage = null, successMessage = null) }
-    }
-
     fun reportError(message: String) {
         updateUiState { 
             it.copy(
@@ -239,10 +227,6 @@ class AuthViewModel @Inject constructor(
                 loginInProgress = AuthFlow.NONE
             ) 
         }
-    }
-    
-    private suspend fun loadUserProfile() {
-        _userProfile.value = authManager.getUserProfile()
     }
     
     private fun validateEmail(email: String): Boolean {
@@ -260,8 +244,7 @@ class AuthViewModel @Inject constructor(
         confirmPassword = "",
         isLoading = false,
         loginInProgress = AuthFlow.NONE,
-        errorMessage = null,
-        successMessage = null
+        errorMessage = null
     )
 
     companion object {
@@ -281,7 +264,6 @@ data class AuthUiState(
     val displayNameError: String? = null,
     val confirmPasswordError: String? = null,
     val errorMessage: String? = null,
-    val successMessage: String? = null,
     val loginInProgress: AuthFlow = AuthFlow.NONE
 ) : Parcelable
 

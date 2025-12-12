@@ -45,6 +45,7 @@ class ExerciseEngine {
                 exercise.correctAnswer,
                 ignoreCase = true
             )
+            is Exercise.Flashcard -> exercise.isRemembered == true
         }
         
         val feedback = if (isCorrect) {
@@ -62,8 +63,14 @@ class ExerciseEngine {
             else -> null
         }
         
-        val scoreDelta = if (isCorrect) 15 else 0
-        val heartsDelta = if (isCorrect) 0 else -1
+        val scoreDelta = when (exercise) {
+            is Exercise.Flashcard -> if (isCorrect) 10 else 0
+            else -> if (isCorrect) 15 else 0
+        }
+        val heartsDelta = when (exercise) {
+            is Exercise.Flashcard -> 0
+            else -> if (isCorrect) 0 else -1
+        }
         
         return ExerciseEvaluation(
             isCorrect = isCorrect,
