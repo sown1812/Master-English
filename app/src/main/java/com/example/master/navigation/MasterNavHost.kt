@@ -23,6 +23,7 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Store
+import com.example.master.core.cache.AudioCache
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -81,6 +82,7 @@ import com.example.master.ui.notifications.NotificationsViewModel
 import com.example.master.ui.practice.PracticeScreen
 import com.example.master.ui.profile.ProfileScreen
 import com.example.master.ui.profile.ProfileViewModel
+import com.example.master.ui.practice.MistakeReviewRoute
 import com.example.master.ui.sync.SyncViewModel
 import com.example.master.ui.settings.SettingsScreen
 import com.example.master.ui.settings.SettingsViewModel
@@ -103,6 +105,8 @@ fun MasterApp() {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentDestination = navBackStackEntry?.destination
+    val context = LocalContext.current
+    val audioCache = remember { AudioCache(context) }
 
     val bottomDestinations = remember {
         listOf(
@@ -286,13 +290,18 @@ fun MasterApp() {
                     onStartLesson = { lessonId -> navController.navigate("lesson/$lessonId") },
                     onOpenFlashcards = { lessonId -> navController.navigate("flashcards/$lessonId") },
                     onOpenLeaderboard = { navController.navigate("leaderboard") },
-                    onOpenShop = { navController.navigate("shop") }
+                    onOpenShop = { navController.navigate("shop") },
+                    onOpenMistakes = { navController.navigate("mistakes") }
                 )
             }
 
             composable("profile") {
                 val viewModel: ProfileViewModel = hiltViewModel()
                 ProfileScreen(viewModel = viewModel)
+            }
+
+            composable("mistakes") {
+                MistakeReviewRoute()
             }
 
             composable("settings") {
@@ -333,6 +342,7 @@ fun MasterApp() {
                 val viewModel: FlashcardViewModel = hiltViewModel()
                 val context = LocalContext.current
                 val audioPlayer = remember { AudioPlayer(context) }
+                val audioCache = remember { AudioCache(context) }
                 val ttsManager = remember { TTSManager(context) }
 
                 DisposableEffect(Unit) {
@@ -346,8 +356,9 @@ fun MasterApp() {
                     viewModel = viewModel,
                     onBack = { navController.popBackStack() },
                     onPlayAudio = { text, audioUrl, slow ->
-                        if (!audioUrl.isNullOrBlank()) {
-                            audioPlayer.play(audioUrl)
+                        val resolved = audioCache.getCachedPath(audioUrl) ?: audioUrl
+                        if (!resolved.isNullOrBlank()) {
+                            audioPlayer.play(resolved)
                         } else {
                             ttsManager.speak(text, speed = if (slow) 0.7f else 1.0f)
                         }
@@ -362,6 +373,7 @@ fun MasterApp() {
                 val viewModel: LessonViewModel = hiltViewModel()
                 val context = LocalContext.current
                 val audioPlayer = remember { AudioPlayer(context) }
+                val audioCache = remember { AudioCache(context) }
                 val ttsManager = remember { TTSManager(context) }
 
                 var pendingSpeechPrompt by remember { mutableStateOf<String?>(null) }
@@ -411,8 +423,9 @@ fun MasterApp() {
                     },
                     onExit = { navController.popBackStack() },
                     onPlayAudio = { text, audioUrl, slow ->
-                        if (!audioUrl.isNullOrBlank()) {
-                            audioPlayer.play(audioUrl)
+                        val resolved = audioCache.getCachedPath(audioUrl) ?: audioUrl
+                        if (!resolved.isNullOrBlank()) {
+                            audioPlayer.play(resolved)
                         } else {
                             ttsManager.speak(text, speed = if (slow) 0.7f else 1.0f)
                         }

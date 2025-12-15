@@ -4,6 +4,7 @@ import android.content.Context
 import com.example.master.auth.AuthManager
 import com.example.master.auth.di.AuthProvider
 import com.example.master.auth.di.FirebaseAuthProvider
+import com.example.master.core.network.NetworkMonitor
 import com.example.master.data.local.AppDatabase
 import com.example.master.data.local.GameStateStore
 import com.example.master.data.local.PendingSyncStore
@@ -62,6 +63,11 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideNetworkMonitor(@ApplicationContext context: Context): NetworkMonitor =
+        NetworkMonitor(context)
+
+    @Provides
+    @Singleton
     fun provideGson(): Gson = Gson()
 
     @Provides
@@ -86,5 +92,17 @@ object AppModule {
         repository = repository,
         apiService = apiService,
         pendingSyncStore = pendingSyncStore
+    )
+
+    @Provides
+    @Singleton
+    fun provideOfflineManager(
+        @ApplicationContext context: Context,
+        apiService: ApiService,
+        repository: LearningRepository
+    ): com.example.master.sync.OfflineManager = com.example.master.sync.OfflineManager(
+        apiService = apiService,
+        repository = repository,
+        appContext = context
     )
 }

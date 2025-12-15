@@ -3,6 +3,7 @@ package com.example.master.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.master.auth.AuthManager
+import com.example.master.sync.OfflineManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,13 +19,16 @@ data class SettingsUiState(
     val darkMode: Boolean = false,
     val reminderEnabled: Boolean = false,
     val reminderTime: String = "20:00",
+    val offlineStatus: String = "",
+    val isOfflineDownloading: Boolean = false,
     val message: String? = null,
     val isProcessing: Boolean = false
 )
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val offlineManager: OfflineManager
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
@@ -52,6 +56,19 @@ class SettingsViewModel @Inject constructor(
 
     fun updateReminderTime(time: String) {
         _uiState.update { it.copy(reminderTime = time) }
+    }
+
+    fun prefetchOfflineContent() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isOfflineDownloading = true, offlineStatus = "Đang tải nội dung...") }
+            runCatching { offlineManager.prefetchAllLessons() }
+                .onSuccess {
+                    _uiState.update { it.copy(isOfflineDownloading = false, offlineStatus = "Đã tải xong để học offline") }
+                }
+                .onFailure { e ->
+                    _uiState.update { it.copy(isOfflineDownloading = false, offlineStatus = "Lỗi khi tải: ${e.message}") }
+                }
+        }
     }
 
     fun logout(onComplete: (Boolean) -> Unit) {

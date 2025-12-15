@@ -42,7 +42,8 @@ fun PracticeScreen(
     onStartLesson: (Int) -> Unit,
     onOpenFlashcards: (Int) -> Unit,
     onOpenLeaderboard: () -> Unit,
-    onOpenShop: () -> Unit
+    onOpenShop: () -> Unit,
+    onOpenMistakes: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -69,7 +70,7 @@ fun PracticeScreen(
         QuickGrid(
             items = buildList {
                 val flashcardLesson = state.recommendedLessons.firstOrNull()?.id ?: 1
-                add(PracticeItem("Ôn flashcard", "Ghi nhớ từ vựng", Icons.Filled.FlashOn) { onOpenFlashcards(flashcardLesson) })
+                add(PracticeItem("Ấn flashcard", "Ghi nhớ từ vựng", Icons.Filled.FlashOn) { onOpenFlashcards(flashcardLesson) })
 
                 state.recommendedLessons.getOrNull(0)?.let { lesson ->
                     add(PracticeItem("Nghe - Chọn", lesson.title, Icons.Filled.Headset) { onStartLesson(lesson.id) })
@@ -77,6 +78,7 @@ fun PracticeScreen(
                 state.recommendedLessons.getOrNull(1)?.let { lesson ->
                     add(PracticeItem("Nói - Lặp lại", lesson.title, Icons.Filled.GraphicEq) { onStartLesson(lesson.id) })
                 }
+                add(PracticeItem("Ôn lỗi sai", "Xem lại các câu sai", Icons.Filled.AutoAwesome, onOpenMistakes))
                 add(PracticeItem("Lộ trình", "Tiếp tục level", Icons.Filled.Map, onOpenLeaderboard))
             }
         )
@@ -96,7 +98,7 @@ fun PracticeScreen(
             ) {
                 Column {
                     Text("Boost XP", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                    Text("Mua booster để nhân đôi điểm", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                    Text("Mua booster để nhân điểm", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
                 }
                 Box(
                     modifier = Modifier

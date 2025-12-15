@@ -1,4 +1,4 @@
-package com.example.master.data.local
+﻿package com.example.master.data.local
 
 import android.content.Context
 import androidx.room.Database
@@ -21,9 +21,10 @@ import kotlinx.coroutines.launch
         ExerciseEntity::class,
         UserEntity::class,
         UserProgressEntity::class,
-        AchievementEntity::class
+        AchievementEntity::class,
+        MistakeEntity::class
     ],
-    version = 2,
+    version = 3,
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -34,6 +35,7 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun userDao(): UserDao
     abstract fun userProgressDao(): UserProgressDao
     abstract fun achievementDao(): AchievementDao
+    abstract fun mistakeDao(): MistakeDao
     
     companion object {
         @Volatile
@@ -49,7 +51,7 @@ abstract class AppDatabase : RoomDatabase() {
                     "master_english_database"
                 )
                     .addCallback(DatabaseCallback())
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .build()
                 INSTANCE = instance
                 instance
@@ -83,6 +85,29 @@ abstract class AppDatabase : RoomDatabase() {
         val MIGRATION_1_2 = object : Migration(1, 2) {
             override fun migrate(database: SupportSQLiteDatabase) {
                 // No schema changes; data seeding happens in onOpen
+            }
+        }
+
+        val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(database: SupportSQLiteDatabase) {
+                database.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS `mistakes` (
+                        `id` INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        `userId` TEXT NOT NULL,
+                        `lessonId` INTEGER NOT NULL,
+                        `exerciseId` INTEGER,
+                        `wordId` INTEGER,
+                        `question` TEXT NOT NULL,
+                        `userAnswer` TEXT NOT NULL,
+                        `correctAnswer` TEXT NOT NULL,
+                        `reason` TEXT,
+                        `createdAt` INTEGER NOT NULL
+                    )
+                    """.trimIndent()
+                )
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_mistakes_userId ON mistakes(userId)")
+                database.execSQL("CREATE INDEX IF NOT EXISTS index_mistakes_lessonId ON mistakes(lessonId)")
             }
         }
         
@@ -298,7 +323,7 @@ abstract class AppDatabase : RoomDatabase() {
                 LessonEntity(
                     id = 16,
                     title = "Home & Household",
-                    description = "Phòng ốc, việc nhà và đồ gia dụng",
+                    description = "Phòng ốc, việc nhà và đồ dùng gia đình",
                     order = 16,
                     totalWords = 6,
                     totalExercises = 4,
@@ -324,7 +349,7 @@ abstract class AppDatabase : RoomDatabase() {
                 LessonEntity(
                     id = 18,
                     title = "Technology & Devices",
-                    description = "Thiết bị, ứng dụng và sự cố công nghệ",
+                    description = "Thiết bị, ứng dụng và sử dụng công nghệ",
                     order = 18,
                     totalWords = 6,
                     totalExercises = 4,
@@ -365,197 +390,197 @@ abstract class AppDatabase : RoomDatabase() {
         private fun getInitialWords(): List<WordEntity> {
             return listOf(
                 // Lesson 1 - Basics 1 (12 words)
-                WordEntity("hello", "xin chao", "HEL-oh", "interjection", "Hello, how are you?", "Xin ch?o, b?n kh?e kh?ng?", lessonId = 1, difficulty = 1, category = "greetings"),
-                WordEntity("hi", "chao", "hai", "interjection", "Hi! Nice to meet you.", "Ch?o! R?t vui ???c g?p b?n.", lessonId = 1, difficulty = 1, category = "greetings"),
+                WordEntity("hello", "xin chào", "HEL-oh", "interjection", "Hello, how are you?", "Xin chào, b?n kh?e không?", lessonId = 1, difficulty = 1, category = "greetings"),
+                WordEntity("hi", "chào", "hai", "interjection", "Hi! Nice to meet you.", "Chào! R?t vui du?c g?p b?n.", lessonId = 1, difficulty = 1, category = "greetings"),
                 WordEntity("goodbye", "t?m bi?t", "gud-bai", "interjection", "Goodbye, see you soon!", "T?m bi?t, h?n g?p l?i!", lessonId = 1, difficulty = 1, category = "greetings"),
-                WordEntity("please", "l?m ?n", "pleez", "adverb", "Please help me.", "L?m ?n gi?p t?i.", lessonId = 1, difficulty = 1, category = "politeness"),
-                WordEntity("thank you", "c?m ?n", "thangk-yoo", "phrase", "Thank you very much!", "C?m ?n b?n r?t nhi?u!", lessonId = 1, difficulty = 1, category = "politeness"),
-                WordEntity("yes", "vang", "yes", "adverb", "Yes, I understand.", "V?ng, t?i hi?u.", lessonId = 1, difficulty = 1, category = "basics"),
-                WordEntity("no", "khong", "no", "adverb", "No, thank you.", "Khong, c?m ?n.", lessonId = 1, difficulty = 1, category = "basics"),
-                WordEntity("I", "toi", "ai", "pronoun", "I am a student.", "T?i l? h?c sinh.", lessonId = 1, difficulty = 1, category = "pronoun"),
-                WordEntity("you", "ban", "yoo", "pronoun", "You are kind.", "B?n r?t t?t b?ng.", lessonId = 1, difficulty = 1, category = "pronoun"),
-                WordEntity("am", "l? (?i v?i I)", "am", "verb", "I am Nam.", "T?i l? Nam.", lessonId = 1, difficulty = 1, category = "verb"),
-                WordEntity("are", "l? (?i v?i you/we/they)", "ar", "verb", "You are my friend.", "B?n l? b?n c?a t?i.", lessonId = 1, difficulty = 1, category = "verb"),
-                WordEntity("name", "ten", "naym", "noun", "My name is Mai.", "T?n t?i l? Mai.", lessonId = 1, difficulty = 1, category = "introductions"),
+                WordEntity("please", "làm on", "pleez", "adverb", "Please help me.", "Làm on giúp tôi.", lessonId = 1, difficulty = 1, category = "politeness"),
+                WordEntity("thank you", "c?m on", "thangk-yoo", "phrase", "Thank you very much!", "C?m on b?n r?t nhi?u!", lessonId = 1, difficulty = 1, category = "politeness"),
+                WordEntity("yes", "vâng", "yes", "adverb", "Yes, I understand.", "Vâng, tôi hi?u.", lessonId = 1, difficulty = 1, category = "basics"),
+                WordEntity("no", "không", "no", "adverb", "No, thank you.", "Không, c?m on.", lessonId = 1, difficulty = 1, category = "basics"),
+                WordEntity("I", "tôi", "ai", "pronoun", "I am a student.", "Tôi là h?c sinh.", lessonId = 1, difficulty = 1, category = "pronoun"),
+                WordEntity("you", "b?n", "yoo", "pronoun", "You are kind.", "B?n r?t t?t b?ng.", lessonId = 1, difficulty = 1, category = "pronoun"),
+                WordEntity("am", "là (di v?i I)", "am", "verb", "I am Nam.", "Tôi là Nam.", lessonId = 1, difficulty = 1, category = "verb"),
+                WordEntity("are", "là (di v?i you/we/they)", "ar", "verb", "You are my friend.", "B?n là b?n c?a tôi.", lessonId = 1, difficulty = 1, category = "verb"),
+                WordEntity("name", "tên", "naym", "noun", "My name is Mai.", "Tên tôi là Mai.", lessonId = 1, difficulty = 1, category = "introductions"),
                 
                 // Lesson 2 - Basics 2 (12 words)
-                WordEntity("he", "anh ?y", "hee", "pronoun", "He is a teacher.", "Anh ?y l? gi?o vi?n.", lessonId = 2, difficulty = 1, category = "pronoun"),
-                WordEntity("she", "c? ?y", "shee", "pronoun", "She is a doctor.", "C? ?y l? b?c s?.", lessonId = 2, difficulty = 1, category = "pronoun"),
-                WordEntity("we", "ch?ng t?i", "wee", "pronoun", "We are from Vietnam.", "Ch?ng t?i ??n t? Vi?t Nam.", lessonId = 2, difficulty = 1, category = "pronoun"),
-                WordEntity("they", "ho", "thay", "pronoun", "They are students.", "H? l? h?c sinh.", lessonId = 2, difficulty = 1, category = "pronoun"),
-                WordEntity("man", "ng??i ??n ?ng", "man", "noun", "The man is tall.", "Ng??i ??n ?ng ?? cao.", lessonId = 2, difficulty = 1, category = "people"),
-                WordEntity("woman", "ph? n?", "wuh-muhn", "noun", "The woman drinks tea.", "Nguoi ph? n? uong tra.", lessonId = 2, difficulty = 1, category = "people"),
-                WordEntity("boy", "con trai", "boy", "noun", "The boy reads a book.", "C?u b? ?ang ??c s?ch.", lessonId = 2, difficulty = 1, category = "people"),
-                WordEntity("girl", "con g?i", "gurl", "noun", "The girl eats rice.", "C? b? ?n c?m.", lessonId = 2, difficulty = 1, category = "people"),
-                WordEntity("eat", "an", "eet", "verb", "We eat breakfast.", "Ch?ng t?i ?n s?ng.", lessonId = 2, difficulty = 1, category = "verb"),
-                WordEntity("drink", "uong", "drink", "verb", "They drink coffee.", "H? u?ng c? ph?.", lessonId = 2, difficulty = 1, category = "verb"),
-                WordEntity("read", "doc", "reed", "verb", "I read every day.", "T?i ??c s?ch m?i ng?y.", lessonId = 2, difficulty = 1, category = "verb"),
-                WordEntity("write", "viet", "rait", "verb", "She writes a letter.", "C? ?y vi?t th?.", lessonId = 2, difficulty = 1, category = "verb"),
+                WordEntity("he", "anh ?y", "hee", "pronoun", "He is a teacher.", "Anh ?y là giáo viên.", lessonId = 2, difficulty = 1, category = "pronoun"),
+                WordEntity("she", "cô ?y", "shee", "pronoun", "She is a doctor.", "Cô ?y là bác si.", lessonId = 2, difficulty = 1, category = "pronoun"),
+                WordEntity("we", "chúng tôi", "wee", "pronoun", "We are from Vietnam.", "Chúng tôi d?n t? Vi?t Nam.", lessonId = 2, difficulty = 1, category = "pronoun"),
+                WordEntity("they", "h?", "thay", "pronoun", "They are students.", "H? là h?c sinh.", lessonId = 2, difficulty = 1, category = "pronoun"),
+                WordEntity("man", "ngu?i dàn ông", "man", "noun", "The man is tall.", "Ngu?i dàn ông dó cao.", lessonId = 2, difficulty = 1, category = "people"),
+                WordEntity("woman", "ph? n?", "wuh-muhn", "noun", "The woman drinks tea.", "Ngu?i ph? n? u?ng trà.", lessonId = 2, difficulty = 1, category = "people"),
+                WordEntity("boy", "con trai", "boy", "noun", "The boy reads a book.", "C?u bé dang d?c sách.", lessonId = 2, difficulty = 1, category = "people"),
+                WordEntity("girl", "con gái", "gurl", "noun", "The girl eats rice.", "Cô bé an com.", lessonId = 2, difficulty = 1, category = "people"),
+                WordEntity("eat", "an", "eet", "verb", "We eat breakfast.", "Chúng tôi an sáng.", lessonId = 2, difficulty = 1, category = "verb"),
+                WordEntity("drink", "u?ng", "drink", "verb", "They drink coffee.", "H? u?ng cà phê.", lessonId = 2, difficulty = 1, category = "verb"),
+                WordEntity("read", "d?c", "reed", "verb", "I read every day.", "Tôi d?c sách m?i ngày.", lessonId = 2, difficulty = 1, category = "verb"),
+                WordEntity("write", "vi?t", "rait", "verb", "She writes a letter.", "Cô ?y vi?t thu.", lessonId = 2, difficulty = 1, category = "verb"),
                 
                 // Lesson 3 - Phrases (12 words)
-                WordEntity("excuse me", "xin l?i", "ex-kyooz mee", "phrase", "Excuse me, where is the bus?", "Xin l?i, tr?m xe ? ??u?", lessonId = 3, difficulty = 1, category = "phrases"),
-                WordEntity("sorry", "xin l?i", "sor-ree", "adjective", "I am sorry.", "Toi xin l?i.", lessonId = 3, difficulty = 1, category = "phrases"),
-                WordEntity("good morning", "ch?o bu?i s?ng", "gud MOR-ning", "phrase", "Good morning, everyone!", "Ch?o bu?i s?ng m?i ng??i!", lessonId = 3, difficulty = 1, category = "greetings"),
-                WordEntity("good night", "ch?c ng? ngon", "gud nait", "phrase", "Good night, see you tomorrow.", "Ch?c ng? ngon, h?n g?p b?n ng?y mai.", lessonId = 3, difficulty = 1, category = "greetings"),
+                WordEntity("excuse me", "xin l?i", "ex-kyooz mee", "phrase", "Excuse me, where is the bus?", "Xin l?i, tr?m xe ? dâu?", lessonId = 3, difficulty = 1, category = "phrases"),
+                WordEntity("sorry", "xin l?i", "sor-ree", "adjective", "I am sorry.", "Tôi xin l?i.", lessonId = 3, difficulty = 1, category = "phrases"),
+                WordEntity("good morning", "chào bu?i sáng", "gud MOR-ning", "phrase", "Good morning, everyone!", "Chào bu?i sáng m?i ngu?i!", lessonId = 3, difficulty = 1, category = "greetings"),
+                WordEntity("good night", "chúc ng? ngon", "gud nait", "phrase", "Good night, see you tomorrow.", "Chúc ng? ngon, h?n g?p b?n ngày mai.", lessonId = 3, difficulty = 1, category = "greetings"),
                 WordEntity("see you later", "h?n g?p l?i sau", "see-yoo-lay-ter", "phrase", "See you later!", "H?n g?p l?i sau!", lessonId = 3, difficulty = 1, category = "phrases"),
-                WordEntity("see you soon", "g?p l?i s?m th?i", "see-yoo-soon", "phrase", "See you soon.", "G?p l?i b?n s?m th?i.", lessonId = 3, difficulty = 1, category = "phrases"),
-                WordEntity("how are you", "b?n kh?e kh?ng", "how-are-yoo", "phrase", "Hi, how are you?", "Chao, b?n kh?e kh?ng?", lessonId = 3, difficulty = 1, category = "phrases"),
-                WordEntity("I am fine", "t?i kh?e", "ai-am-fain", "phrase", "I am fine, thank you.", "Toi khoe, c?m ?n.", lessonId = 3, difficulty = 1, category = "phrases"),
-                WordEntity("what is your name", "b?n t?n g?", "wot-iz-yor-naym", "phrase", "What is your name?", "B?n t?n g??", lessonId = 3, difficulty = 1, category = "phrases"),
-                WordEntity("nice to meet you", "r?t vui ???c g?p b?n", "nais-tu-meet-yoo", "phrase", "Nice to meet you!", "R?t vui ???c g?p b?n!", lessonId = 3, difficulty = 1, category = "phrases"),
-                WordEntity("welcome", "ch?o m?ng", "wel-kum", "phrase", "Welcome to Hanoi!", "Ch?o m?ng ??n H? N?i!", lessonId = 3, difficulty = 1, category = "phrases"),
-                WordEntity("good luck", "ch?c may m?n", "gud luhk", "phrase", "Good luck on your test!", "Ch?c may m?n khi thi!", lessonId = 3, difficulty = 1, category = "phrases"),
+                WordEntity("see you soon", "g?p l?i s?m thôi", "see-yoo-soon", "phrase", "See you soon.", "G?p l?i b?n s?m thôi.", lessonId = 3, difficulty = 1, category = "phrases"),
+                WordEntity("how are you", "b?n kh?e không", "how-are-yoo", "phrase", "Hi, how are you?", "Chào, b?n kh?e không?", lessonId = 3, difficulty = 1, category = "phrases"),
+                WordEntity("I am fine", "tôi kh?e", "ai-am-fain", "phrase", "I am fine, thank you.", "Tôi kh?e, c?m on.", lessonId = 3, difficulty = 1, category = "phrases"),
+                WordEntity("what is your name", "b?n tên gì", "wot-iz-yor-naym", "phrase", "What is your name?", "B?n tên gì?", lessonId = 3, difficulty = 1, category = "phrases"),
+                WordEntity("nice to meet you", "r?t vui du?c g?p b?n", "nais-tu-meet-yoo", "phrase", "Nice to meet you!", "R?t vui du?c g?p b?n!", lessonId = 3, difficulty = 1, category = "phrases"),
+                WordEntity("welcome", "chào m?ng", "wel-kum", "phrase", "Welcome to Hanoi!", "Chào m?ng d?n Hà N?i!", lessonId = 3, difficulty = 1, category = "phrases"),
+                WordEntity("good luck", "chúc may m?n", "gud luhk", "phrase", "Good luck on your test!", "Chúc may m?n khi thi!", lessonId = 3, difficulty = 1, category = "phrases"),
                 // Lesson 4 - Food & Drinks (12 words)
-                WordEntity("water", "nuoc", "waw-ter", "noun", "I drink water.", "T?i u?ng n??c.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("coffee", "c? ph?", "ko-fee", "noun", "She likes coffee.", "Co ay thich c? ph?.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("tea", "tra", "tee", "noun", "Tea or coffee?", "Tra hay c? ph??", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("bread", "b?nh m?", "bred", "noun", "I eat bread.", "Toi an b?nh m?.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("rice", "com", "rais", "noun", "We cook rice.", "Ch?ng t?i n?u c?m.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("soup", "sup", "soop", "noun", "The soup is hot.", "B?t s?p n?ng.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("apple", "tao", "ap-ul", "noun", "The apple is red.", "Qu? t?o m?u ??.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("banana", "chuoi", "buh-na-na", "noun", "Bananas are sweet.", "Chu?i ng?t.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("chicken", "ga", "chik-en", "noun", "I eat chicken.", "T?i ?n th?t g?.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("fish", "ca", "fish", "noun", "Fish and rice.", "C? v? c?m.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("delicious", "ngon", "di-li-shus", "adjective", "The meal is delicious.", "B?a ?n ngon.", lessonId = 4, difficulty = 1, category = "food"),
-                WordEntity("hungry", "doi", "hun-gree", "adjective", "I am hungry.", "T?i ?ang ??i.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("water", "nu?c", "waw-ter", "noun", "I drink water.", "Tôi u?ng nu?c.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("coffee", "cà phê", "ko-fee", "noun", "She likes coffee.", "Cô ?y thích cà phê.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("tea", "trà", "tee", "noun", "Tea or coffee?", "Trà hay cà phê?", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("bread", "bánh mì", "bred", "noun", "I eat bread.", "Tôi an bánh mì.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("rice", "com", "rais", "noun", "We cook rice.", "Chúng tôi n?u com.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("soup", "súp", "soop", "noun", "The soup is hot.", "Bát súp nóng.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("apple", "táo", "ap-ul", "noun", "The apple is red.", "Qu? táo màu d?.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("banana", "chu?i", "buh-na-na", "noun", "Bananas are sweet.", "Chu?i ng?t.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("chicken", "gà", "chik-en", "noun", "I eat chicken.", "Tôi an th?t gà.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("fish", "cá", "fish", "noun", "Fish and rice.", "Cá và com.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("delicious", "ngon", "di-li-shus", "adjective", "The meal is delicious.", "B?a an ngon.", lessonId = 4, difficulty = 1, category = "food"),
+                WordEntity("hungry", "dói", "hun-gree", "adjective", "I am hungry.", "Tôi dang dói.", lessonId = 4, difficulty = 1, category = "food"),
                 
                 // Lesson 5 - Travel Essentials (6 words)
-                WordEntity("bus", "xe bu?t", "bus", "noun", "Take the bus.", "Bat xe bu?t.", lessonId = 5, difficulty = 1, category = "travel"),
-                WordEntity("train", "t?u h?a", "tray-n", "noun", "The train is late.", "T?u h?a b? tr?.", lessonId = 5, difficulty = 1, category = "travel"),
+                WordEntity("bus", "xe buýt", "bus", "noun", "Take the bus.", "B?t xe buýt.", lessonId = 5, difficulty = 1, category = "travel"),
+                WordEntity("train", "tàu h?a", "tray-n", "noun", "The train is late.", "Tàu h?a b? tr?.", lessonId = 5, difficulty = 1, category = "travel"),
                 WordEntity("taxi", "taxi", "tak-see", "noun", "Call a taxi.", "G?i m?t chi?c taxi.", lessonId = 5, difficulty = 1, category = "travel"),
-                WordEntity("airport", "s?n bay", "air-port", "noun", "The airport is far.", "S?n bay kh? xa.", lessonId = 5, difficulty = 1, category = "travel"),
-                WordEntity("ticket", "ve", "tik-it", "noun", "I need a ticket.", "T?i c?n v?.", lessonId = 5, difficulty = 1, category = "travel"),
-                WordEntity("passport", "h? chi?u", "pass-port", "noun", "Show your passport.", "Xuat trinh h? chi?u.", lessonId = 5, difficulty = 1, category = "travel"),
+                WordEntity("airport", "sân bay", "air-port", "noun", "The airport is far.", "Sân bay khá xa.", lessonId = 5, difficulty = 1, category = "travel"),
+                WordEntity("ticket", "vé", "tik-it", "noun", "I need a ticket.", "Tôi c?n vé.", lessonId = 5, difficulty = 1, category = "travel"),
+                WordEntity("passport", "h? chi?u", "pass-port", "noun", "Show your passport.", "Xu?t trình h? chi?u.", lessonId = 5, difficulty = 1, category = "travel"),
                 
                 // Lesson 6 - Family (6 words)
-                WordEntity("father", "cha", "fa-ther", "noun", "My father is kind.", "Cha t?i r?t t?t.", lessonId = 6, difficulty = 1, category = "family"),
-                WordEntity("mother", "me", "muh-ther", "noun", "My mother cooks.", "M? t?i n?u ?n.", lessonId = 6, difficulty = 1, category = "family"),
-                WordEntity("brother", "anh/em trai", "bru-ther", "noun", "He is my brother.", "Anh ?y l? anh trai t?i.", lessonId = 6, difficulty = 1, category = "family"),
-                WordEntity("sister", "ch?/em g?i", "sis-ter", "noun", "She is my sister.", "C? ?y l? ch? g?i t?i.", lessonId = 6, difficulty = 1, category = "family"),
-                WordEntity("son", "con trai", "sun", "noun", "This is my son.", "??y l? con trai t?i.", lessonId = 6, difficulty = 1, category = "family"),
-                WordEntity("daughter", "con g?i", "daw-ter", "noun", "That is my daughter.", "Do la con g?i toi.", lessonId = 6, difficulty = 1, category = "family"),
+                WordEntity("father", "cha", "fa-ther", "noun", "My father is kind.", "Cha tôi r?t t?t.", lessonId = 6, difficulty = 1, category = "family"),
+                WordEntity("mother", "m?", "muh-ther", "noun", "My mother cooks.", "M? tôi n?u an.", lessonId = 6, difficulty = 1, category = "family"),
+                WordEntity("brother", "anh/em trai", "bru-ther", "noun", "He is my brother.", "Anh ?y là anh trai tôi.", lessonId = 6, difficulty = 1, category = "family"),
+                WordEntity("sister", "ch?/em gái", "sis-ter", "noun", "She is my sister.", "Cô ?y là ch? gái tôi.", lessonId = 6, difficulty = 1, category = "family"),
+                WordEntity("son", "con trai", "sun", "noun", "This is my son.", "Ðây là con trai tôi.", lessonId = 6, difficulty = 1, category = "family"),
+                WordEntity("daughter", "con gái", "daw-ter", "noun", "That is my daughter.", "Ðó là con gái tôi.", lessonId = 6, difficulty = 1, category = "family"),
                 
                 // Lesson 7 - Colors & Clothing (6 words)
-                WordEntity("red", "m?u ??", "red", "adjective", "The apple is red.", "Qu? t?o m?u ??.", lessonId = 7, difficulty = 1, category = "colors"),
-                WordEntity("blue", "m?u xanh d??ng", "blu", "adjective", "The sky is blue.", "B?u tr?i m?u xanh.", lessonId = 7, difficulty = 1, category = "colors"),
-                WordEntity("green", "m?u xanh l?", "green", "adjective", "The leaf is green.", "Chiec la m?u xanh l?.", lessonId = 7, difficulty = 1, category = "colors"),
-                WordEntity("shirt", "?o s? mi", "shurt", "noun", "I wear a shirt.", "Toi mac ?o s? mi.", lessonId = 7, difficulty = 1, category = "clothes"),
-                WordEntity("pants", "qu?n d?i", "pants", "noun", "These pants are new.", "Chi?c qu?n n?y m?i.", lessonId = 7, difficulty = 1, category = "clothes"),
-                WordEntity("shoes", "??i gi?y", "shooz", "noun", "I like these shoes.", "Toi thich ??i gi?y nay.", lessonId = 7, difficulty = 1, category = "clothes"),
+                WordEntity("red", "màu d?", "red", "adjective", "The apple is red.", "Qu? táo màu d?.", lessonId = 7, difficulty = 1, category = "colors"),
+                WordEntity("blue", "màu xanh duong", "blu", "adjective", "The sky is blue.", "B?u tr?i màu xanh.", lessonId = 7, difficulty = 1, category = "colors"),
+                WordEntity("green", "màu xanh lá", "green", "adjective", "The leaf is green.", "Chi?c lá màu xanh lá.", lessonId = 7, difficulty = 1, category = "colors"),
+                WordEntity("shirt", "áo so mi", "shurt", "noun", "I wear a shirt.", "Tôi m?c áo so mi.", lessonId = 7, difficulty = 1, category = "clothes"),
+                WordEntity("pants", "qu?n dài", "pants", "noun", "These pants are new.", "Chi?c qu?n này m?i.", lessonId = 7, difficulty = 1, category = "clothes"),
+                WordEntity("shoes", "dôi giày", "shooz", "noun", "I like these shoes.", "Tôi thích dôi giày này.", lessonId = 7, difficulty = 1, category = "clothes"),
                 
                 // Lesson 8 - Numbers & Time (6 words)
-                WordEntity("one", "mot", "wun", "number", "One apple, please.", "Mot qua tao, l?m ?n.", lessonId = 8, difficulty = 1, category = "numbers"),
-                WordEntity("two", "hai", "too", "number", "Two tickets.", "Hai v?.", lessonId = 8, difficulty = 1, category = "numbers"),
-                WordEntity("three", "ba", "three", "number", "Three cups of tea.", "Ba ly tr?.", lessonId = 8, difficulty = 1, category = "numbers"),
-                WordEntity("today", "h?m nay", "to-day", "noun", "See you today.", "Hen ban h?m nay.", lessonId = 8, difficulty = 1, category = "time"),
-                WordEntity("tomorrow", "ng?y mai", "to-mor-row", "noun", "See you tomorrow.", "Hen ban ng?y mai.", lessonId = 8, difficulty = 1, category = "time"),
-                WordEntity("yesterday", "h?m qua", "yes-ter-day", "noun", "Yesterday was busy.", "H?m qua r?t b?n.", lessonId = 8, difficulty = 1, category = "time"),
+                WordEntity("one", "m?t", "wun", "number", "One apple, please.", "M?t qu? táo, làm on.", lessonId = 8, difficulty = 1, category = "numbers"),
+                WordEntity("two", "hai", "too", "number", "Two tickets.", "Hai vé.", lessonId = 8, difficulty = 1, category = "numbers"),
+                WordEntity("three", "ba", "three", "number", "Three cups of tea.", "Ba ly trà.", lessonId = 8, difficulty = 1, category = "numbers"),
+                WordEntity("today", "hôm nay", "to-day", "noun", "See you today.", "H?n b?n hôm nay.", lessonId = 8, difficulty = 1, category = "time"),
+                WordEntity("tomorrow", "ngày mai", "to-mor-row", "noun", "See you tomorrow.", "H?n b?n ngày mai.", lessonId = 8, difficulty = 1, category = "time"),
+                WordEntity("yesterday", "hôm qua", "yes-ter-day", "noun", "Yesterday was busy.", "Hôm qua r?t b?n.", lessonId = 8, difficulty = 1, category = "time"),
                 
                 // Lesson 9 - School & Work (6 words)
-                WordEntity("teacher", "gi?o vi?n", "tee-cher", "noun", "She is a teacher.", "Co ay la gi?o vi?n.", lessonId = 9, difficulty = 1, category = "school"),
-                WordEntity("student", "h?c sinh", "stoo-dent", "noun", "I am a student.", "T?i l? h?c sinh.", lessonId = 9, difficulty = 1, category = "school"),
-                WordEntity("school", "truong hoc", "skool", "noun", "The school is big.", "Tr??ng h?c n?y l?n.", lessonId = 9, difficulty = 1, category = "school"),
-                WordEntity("job", "c?ng vi?c", "job", "noun", "I love my job.", "Toi thich c?ng vi?c.", lessonId = 9, difficulty = 1, category = "work"),
-                WordEntity("office", "v?n ph?ng", "of-fis", "noun", "The office is near.", "V?n ph?ng ? g?n.", lessonId = 9, difficulty = 1, category = "work"),
-                WordEntity("meeting", "cu?c h?p", "mee-ting", "noun", "I have a meeting.", "Toi co mot cu?c h?p.", lessonId = 9, difficulty = 1, category = "work"),
+                WordEntity("teacher", "giáo viên", "tee-cher", "noun", "She is a teacher.", "Cô ?y là giáo viên.", lessonId = 9, difficulty = 1, category = "school"),
+                WordEntity("student", "h?c sinh", "stoo-dent", "noun", "I am a student.", "Tôi là h?c sinh.", lessonId = 9, difficulty = 1, category = "school"),
+                WordEntity("school", "tru?ng h?c", "skool", "noun", "The school is big.", "Tru?ng h?c này l?n.", lessonId = 9, difficulty = 1, category = "school"),
+                WordEntity("job", "công vi?c", "job", "noun", "I love my job.", "Tôi thích công vi?c.", lessonId = 9, difficulty = 1, category = "work"),
+                WordEntity("office", "van phòng", "of-fis", "noun", "The office is near.", "Van phòng ? g?n.", lessonId = 9, difficulty = 1, category = "work"),
+                WordEntity("meeting", "cu?c h?p", "mee-ting", "noun", "I have a meeting.", "Tôi có m?t cu?c h?p.", lessonId = 9, difficulty = 1, category = "work"),
                 
                 // Lesson 10 - Daily Routine (6 words)
-                WordEntity("wake up", "ng? d?y", "wake-up", "verb", "I wake up early.", "Toi ng? d?y som.", lessonId = 10, difficulty = 1, category = "routine"),
-                WordEntity("breakfast", "bu?i s?ng", "brek-fust", "noun", "Breakfast at 7 am.", "?n s?ng l?c 7 gi?.", lessonId = 10, difficulty = 1, category = "routine"),
-                WordEntity("lunch", "bu?i tr?a", "lunch", "noun", "Lunch with friends.", "?n tr?a v?i b?n.", lessonId = 10, difficulty = 1, category = "routine"),
-                WordEntity("dinner", "bu?i t?i", "din-ner", "noun", "Dinner at home.", "?n t?i ? nh?.", lessonId = 10, difficulty = 1, category = "routine"),
-                WordEntity("sleep", "ngu", "sleep", "verb", "I sleep at 11 pm.", "T?i ng? l?c 11 gi?.", lessonId = 10, difficulty = 1, category = "routine"),
-                WordEntity("exercise", "t?p th? d?c", "ek-ser-size", "verb", "I exercise every day.", "Toi t?p th? d?c moi ngay.", lessonId = 10, difficulty = 1, category = "routine"),
+                WordEntity("wake up", "th?c d?y", "wake-up", "verb", "I wake up early.", "Tôi th?c d?y s?m.", lessonId = 10, difficulty = 1, category = "routine"),
+                WordEntity("breakfast", "b?a sáng", "brek-fust", "noun", "Breakfast at 7 am.", "An sáng lúc 7 gi?.", lessonId = 10, difficulty = 1, category = "routine"),
+                WordEntity("lunch", "b?a trua", "lunch", "noun", "Lunch with friends.", "An trua v?i b?n.", lessonId = 10, difficulty = 1, category = "routine"),
+                WordEntity("dinner", "b?a t?i", "din-ner", "noun", "Dinner at home.", "An t?i ? nhà.", lessonId = 10, difficulty = 1, category = "routine"),
+                WordEntity("sleep", "ng?", "sleep", "verb", "I sleep at 11 pm.", "Tôi ng? lúc 11 gi?.", lessonId = 10, difficulty = 1, category = "routine"),
+                WordEntity("exercise", "t?p th? d?c", "ek-ser-size", "verb", "I exercise every day.", "Tôi t?p th? d?c m?i ngày.", lessonId = 10, difficulty = 1, category = "routine"),
                 
                 // Lesson 11 - Transport & Directions (6 words)
-                WordEntity("bus stop", "tram xe bu?t", "bus-stop", "noun", "The bus stop is near.", "Tram xe bu?t o gan.", lessonId = 11, difficulty = 2, category = "travel"),
-                WordEntity("station", "nh? ga", "stay-shun", "noun", "Meet me at the station.", "Gap toi o nh? ga.", lessonId = 11, difficulty = 2, category = "travel"),
-                WordEntity("ticket booth", "qu?y v?", "tik-it booth", "noun", "Buy tickets at the booth.", "Mua v? ? qu?y.", lessonId = 11, difficulty = 2, category = "travel"),
-                WordEntity("turn left", "r? tr?i", "turn left", "phrase", "Turn left at the corner.", "R? tr?i ? g?c ???ng.", lessonId = 11, difficulty = 2, category = "directions"),
-                WordEntity("straight ahead", "?i th?ng", "straight ahead", "phrase", "Go straight ahead 200 meters.", "?i th?ng 200 m?t.", lessonId = 11, difficulty = 2, category = "directions"),
-                WordEntity("traffic jam", "k?t xe", "traf-ik jam", "noun", "There is a traffic jam.", "Dang k?t xe.", lessonId = 11, difficulty = 2, category = "travel"),
+                WordEntity("bus stop", "tr?m xe buýt", "bus-stop", "noun", "The bus stop is near.", "Tr?m xe buýt ? g?n.", lessonId = 11, difficulty = 2, category = "travel"),
+                WordEntity("station", "nhà ga", "stay-shun", "noun", "Meet me at the station.", "G?p tôi ? nhà ga.", lessonId = 11, difficulty = 2, category = "travel"),
+                WordEntity("ticket booth", "qu?y vé", "tik-it booth", "noun", "Buy tickets at the booth.", "Mua vé ? qu?y.", lessonId = 11, difficulty = 2, category = "travel"),
+                WordEntity("turn left", "r? trái", "turn left", "phrase", "Turn left at the corner.", "R? trái ? góc du?ng.", lessonId = 11, difficulty = 2, category = "directions"),
+                WordEntity("straight ahead", "di th?ng", "straight ahead", "phrase", "Go straight ahead 200 meters.", "Ði th?ng 200 mét.", lessonId = 11, difficulty = 2, category = "directions"),
+                WordEntity("traffic jam", "k?t xe", "traf-ik jam", "noun", "There is a traffic jam.", "Ðang k?t xe.", lessonId = 11, difficulty = 2, category = "travel"),
                 
                 // Lesson 12 - Shopping & Money (6 words)
-                WordEntity("price", "gia", "price", "noun", "What is the price?", "Gi? bao nhi?u?", lessonId = 12, difficulty = 2, category = "shopping"),
-                WordEntity("discount", "gi?m gi?", "dis-count", "noun", "Do you have a discount?", "Ban co gi?m gi? khong?", lessonId = 12, difficulty = 2, category = "shopping"),
-                WordEntity("cash", "ti?n m?t", "cash", "noun", "I pay with cash.", "Toi tra ti?n m?t.", lessonId = 12, difficulty = 2, category = "shopping"),
-                WordEntity("card", "the", "card", "noun", "Can I pay by card?", "T?i c? th? tr? b?ng th? kh?ng?", lessonId = 12, difficulty = 2, category = "shopping"),
-                WordEntity("receipt", "h?a ??n", "re-seet", "noun", "Here is your receipt.", "Day la h?a ??n cua ban.", lessonId = 12, difficulty = 2, category = "shopping"),
-                WordEntity("expensive", "dat", "ex-pen-siv", "adjective", "That bag is expensive.", "Chi?c t?i ?? ??t.", lessonId = 12, difficulty = 2, category = "shopping"),
+                WordEntity("price", "giá", "price", "noun", "What is the price?", "Giá bao nhiêu?", lessonId = 12, difficulty = 2, category = "shopping"),
+                WordEntity("discount", "gi?m giá", "dis-count", "noun", "Do you have a discount?", "B?n có gi?m giá không?", lessonId = 12, difficulty = 2, category = "shopping"),
+                WordEntity("cash", "ti?n m?t", "cash", "noun", "I pay with cash.", "Tôi tr? ti?n m?t.", lessonId = 12, difficulty = 2, category = "shopping"),
+                WordEntity("card", "th?", "card", "noun", "Can I pay by card?", "Tôi có th? tr? b?ng th? không?", lessonId = 12, difficulty = 2, category = "shopping"),
+                WordEntity("receipt", "hóa don", "re-seet", "noun", "Here is your receipt.", "Ðây là hóa don c?a b?n.", lessonId = 12, difficulty = 2, category = "shopping"),
+                WordEntity("expensive", "d?t", "ex-pen-siv", "adjective", "That bag is expensive.", "Chi?c túi dó d?t.", lessonId = 12, difficulty = 2, category = "shopping"),
                 
                 // Lesson 13 - Restaurant & Cafe (6 words)
-                WordEntity("menu", "th?c ??n", "men-yoo", "noun", "Can I see the menu?", "Cho toi xem th?c ??n.", lessonId = 13, difficulty = 2, category = "food"),
-                WordEntity("order", "g?i m?n", "or-der", "verb", "We will order now.", "Chung toi se g?i m?n bay gio.", lessonId = 13, difficulty = 2, category = "food"),
-                WordEntity("reservation", "??t b?n", "re-zer-vay-shun", "noun", "I have a reservation.", "Toi da ??t b?n truoc.", lessonId = 13, difficulty = 2, category = "food"),
-                WordEntity("bill", "h?a ??n", "bill", "noun", "Please bring the bill.", "Cho xin h?a ??n.", lessonId = 13, difficulty = 2, category = "food"),
-                WordEntity("tip", "ti?n tip", "tip", "noun", "Leave a small tip.", "De lai chut ti?n tip.", lessonId = 13, difficulty = 2, category = "food"),
-                WordEntity("delicious", "ngon", "di-li-shus", "adjective", "The soup is delicious.", "M?n s?p r?t ngon.", lessonId = 13, difficulty = 2, category = "food"),
+                WordEntity("menu", "th?c don", "men-yoo", "noun", "Can I see the menu?", "Cho tôi xem th?c don.", lessonId = 13, difficulty = 2, category = "food"),
+                WordEntity("order", "g?i món", "or-der", "verb", "We will order now.", "Chúng tôi s? g?i món bây gi?.", lessonId = 13, difficulty = 2, category = "food"),
+                WordEntity("reservation", "d?t bàn", "re-zer-vay-shun", "noun", "I have a reservation.", "Tôi dã d?t bàn tru?c.", lessonId = 13, difficulty = 2, category = "food"),
+                WordEntity("bill", "hóa don", "bill", "noun", "Please bring the bill.", "Cho xin hóa don.", lessonId = 13, difficulty = 2, category = "food"),
+                WordEntity("tip", "ti?n tip", "tip", "noun", "Leave a small tip.", "Ð? l?i chút ti?n tip.", lessonId = 13, difficulty = 2, category = "food"),
+                WordEntity("delicious", "ngon", "di-li-shus", "adjective", "The soup is delicious.", "Món súp r?t ngon.", lessonId = 13, difficulty = 2, category = "food"),
                 
                 // Lesson 14 - Health & Doctor (6 words)
-                WordEntity("fever", "sot", "fee-ver", "noun", "I have a fever.", "T?i b? s?t.", lessonId = 14, difficulty = 2, category = "health"),
-                WordEntity("cough", "ho", "coff", "noun", "This cough is bad.", "C?n ho n?y n?ng.", lessonId = 14, difficulty = 2, category = "health"),
-                WordEntity("headache", "?au ??u", "hed-ake", "noun", "I have a headache.", "Toi bi ?au ??u.", lessonId = 14, difficulty = 2, category = "health"),
-                WordEntity("medicine", "thuoc", "med-i-sin", "noun", "Take this medicine twice a day.", "U?ng thu?c n?y 2 l?n m?i ng?y.", lessonId = 14, difficulty = 2, category = "health"),
-                WordEntity("appointment", "l?ch h?n", "ap-point-ment", "noun", "I need a doctor appointment.", "T?i c?n h?n b?c s?.", lessonId = 14, difficulty = 2, category = "health"),
-                WordEntity("rest", "ngh? ng?i", "rest", "verb", "You should rest today.", "Ban nen ngh? ng?i h?m nay.", lessonId = 14, difficulty = 2, category = "health"),
+                WordEntity("fever", "s?t", "fee-ver", "noun", "I have a fever.", "Tôi b? s?t.", lessonId = 14, difficulty = 2, category = "health"),
+                WordEntity("cough", "ho", "coff", "noun", "This cough is bad.", "Con ho này n?ng.", lessonId = 14, difficulty = 2, category = "health"),
+                WordEntity("headache", "dau d?u", "hed-ake", "noun", "I have a headache.", "Tôi b? dau d?u.", lessonId = 14, difficulty = 2, category = "health"),
+                WordEntity("medicine", "thu?c", "med-i-sin", "noun", "Take this medicine twice a day.", "U?ng thu?c này 2 l?n m?i ngày.", lessonId = 14, difficulty = 2, category = "health"),
+                WordEntity("appointment", "l?ch h?n", "ap-point-ment", "noun", "I need a doctor appointment.", "Tôi c?n h?n bác si.", lessonId = 14, difficulty = 2, category = "health"),
+                WordEntity("rest", "ngh? ngoi", "rest", "verb", "You should rest today.", "B?n nên ngh? ngoi hôm nay.", lessonId = 14, difficulty = 2, category = "health"),
                 
                 // Lesson 15 - Workplace (6 words)
-                WordEntity("meeting room", "ph?ng h?p", "mee-ting room", "noun", "The meeting room is ready.", "Ph?ng h?p ?? s?n s?ng.", lessonId = 15, difficulty = 2, category = "work"),
-                WordEntity("deadline", "h?n ch?t", "dead-line", "noun", "The deadline is Friday.", "H?n ch?t l? th? S?u.", lessonId = 15, difficulty = 2, category = "work"),
-                WordEntity("task", "nhi?m v?", "task", "noun", "Assign the new task.", "Giao nhi?m v? moi.", lessonId = 15, difficulty = 2, category = "work"),
-                WordEntity("colleague", "??ng nghi?p", "kol-leeg", "noun", "She is my colleague.", "Co ay la ??ng nghi?p cua toi.", lessonId = 15, difficulty = 2, category = "work"),
-                WordEntity("report", "b?o c?o", "ri-port", "noun", "Send the weekly report.", "Gui b?o c?o hang tuan.", lessonId = 15, difficulty = 2, category = "work"),
-                WordEntity("present", "tr?nh b?y", "pre-zent", "verb", "I will present today.", "Toi se tr?nh b?y h?m nay.", lessonId = 15, difficulty = 2, category = "work"),
+                WordEntity("meeting room", "phòng h?p", "mee-ting room", "noun", "The meeting room is ready.", "Phòng h?p dã s?n sàng.", lessonId = 15, difficulty = 2, category = "work"),
+                WordEntity("deadline", "h?n chót", "dead-line", "noun", "The deadline is Friday.", "H?n chót là th? Sáu.", lessonId = 15, difficulty = 2, category = "work"),
+                WordEntity("task", "nhi?m v?", "task", "noun", "Assign the new task.", "Giao nhi?m v? m?i.", lessonId = 15, difficulty = 2, category = "work"),
+                WordEntity("colleague", "d?ng nghi?p", "kol-leeg", "noun", "She is my colleague.", "Cô ?y là d?ng nghi?p c?a tôi.", lessonId = 15, difficulty = 2, category = "work"),
+                WordEntity("report", "báo cáo", "ri-port", "noun", "Send the weekly report.", "G?i báo cáo h?ng tu?n.", lessonId = 15, difficulty = 2, category = "work"),
+                WordEntity("present", "trình bày", "pre-zent", "verb", "I will present today.", "Tôi s? trình bày hôm nay.", lessonId = 15, difficulty = 2, category = "work"),
                 
                 // Lesson 16 - Home & Household (6 words)
-                WordEntity("kitchen", "nh? b?p", "kitch-en", "noun", "The kitchen is clean.", "Nh? b?p s?ch.", lessonId = 16, difficulty = 1, category = "home"),
-                WordEntity("living room", "ph?ng kh?ch", "liv-ing room", "noun", "We sit in the living room.", "Chung toi ngoi o ph?ng kh?ch.", lessonId = 16, difficulty = 1, category = "home"),
-                WordEntity("bedroom", "ph?ng ng?", "bed-room", "noun", "The bedroom is cozy.", "Ph?ng ng? ?m c?ng.", lessonId = 16, difficulty = 1, category = "home"),
-                WordEntity("vacuum", "h?t b?i", "vac-yoom", "verb", "Please vacuum the floor.", "Lam on h?t b?i san.", lessonId = 16, difficulty = 1, category = "home"),
-                WordEntity("laundry", "gi?t ??", "lawn-dree", "noun", "Do the laundry on Sunday.", "Gi?t ?? v?o Ch? nh?t.", lessonId = 16, difficulty = 1, category = "home"),
+                WordEntity("kitchen", "nhà b?p", "kitch-en", "noun", "The kitchen is clean.", "Nhà b?p s?ch.", lessonId = 16, difficulty = 1, category = "home"),
+                WordEntity("living room", "phòng khách", "liv-ing room", "noun", "We sit in the living room.", "Chúng tôi ng?i ? phòng khách.", lessonId = 16, difficulty = 1, category = "home"),
+                WordEntity("bedroom", "phòng ng?", "bed-room", "noun", "The bedroom is cozy.", "Phòng ng? ?m cúng.", lessonId = 16, difficulty = 1, category = "home"),
+                WordEntity("vacuum", "hút b?i", "vac-yoom", "verb", "Please vacuum the floor.", "Làm on hút b?i sàn.", lessonId = 16, difficulty = 1, category = "home"),
+                WordEntity("laundry", "gi?t d?", "lawn-dree", "noun", "Do the laundry on Sunday.", "Gi?t d? vào Ch? nh?t.", lessonId = 16, difficulty = 1, category = "home"),
                 WordEntity("cleaning", "d?n d?p", "klee-ning", "noun", "Cleaning takes time.", "D?n d?p m?t th?i gian.", lessonId = 16, difficulty = 1, category = "home"),
                 
                 // Lesson 17 - Hobbies & Free Time (6 words)
-                WordEntity("reading", "??c s?ch", "ree-ding", "noun", "Reading is relaxing.", "??c s?ch gi?p th? gi?n.", lessonId = 17, difficulty = 1, category = "hobby"),
-                WordEntity("painting", "v? tranh", "paint-ing", "noun", "I like painting.", "Toi thich v? tranh.", lessonId = 17, difficulty = 1, category = "hobby"),
-                WordEntity("hiking", "?i b? ???ng d?i", "hi-king", "noun", "We go hiking on weekends.", "Ch?ng t?i ?i hiking cu?i tu?n.", lessonId = 17, difficulty = 1, category = "hobby"),
-                WordEntity("playing guitar", "ch?i guitar", "play-ing gui-tar", "verb", "He enjoys playing guitar.", "Anh ay thich ch?i guitar.", lessonId = 17, difficulty = 1, category = "hobby"),
-                WordEntity("swimming", "b?i l?i", "swim-ing", "noun", "Swimming is my hobby.", "B?i l?i l? s? th?ch c?a t?i.", lessonId = 17, difficulty = 1, category = "hobby"),
-                WordEntity("gardening", "l?m v??n", "gar-den-ing", "noun", "Gardening is peaceful.", "L?m v??n r?t y?n b?nh.", lessonId = 17, difficulty = 1, category = "hobby"),
+                WordEntity("reading", "d?c sách", "ree-ding", "noun", "Reading is relaxing.", "Ð?c sách giúp thu giãn.", lessonId = 17, difficulty = 1, category = "hobby"),
+                WordEntity("painting", "v? tranh", "paint-ing", "noun", "I like painting.", "Tôi thích v? tranh.", lessonId = 17, difficulty = 1, category = "hobby"),
+                WordEntity("hiking", "di b? du?ng dài", "hi-king", "noun", "We go hiking on weekends.", "Chúng tôi di b? du?ng dài cu?i tu?n.", lessonId = 17, difficulty = 1, category = "hobby"),
+                WordEntity("playing guitar", "choi guitar", "play-ing gui-tar", "verb", "He enjoys playing guitar.", "Anh ?y thích choi guitar.", lessonId = 17, difficulty = 1, category = "hobby"),
+                WordEntity("swimming", "boi l?i", "swim-ing", "noun", "Swimming is my hobby.", "Boi l?i là s? thích c?a tôi.", lessonId = 17, difficulty = 1, category = "hobby"),
+                WordEntity("gardening", "làm vu?n", "gar-den-ing", "noun", "Gardening is peaceful.", "Làm vu?n r?t yên bình.", lessonId = 17, difficulty = 1, category = "hobby"),
                 
                 // Lesson 18 - Technology & Devices (6 words)
-                WordEntity("smartphone", "?i?n tho?i th?ng minh", "smart-phone", "noun", "My smartphone is slow.", "?i?n tho?i th?ng minh c?a t?i ch?m.", lessonId = 18, difficulty = 2, category = "technology"),
-                WordEntity("laptop", "m?y t?nh x?ch tay", "lap-top", "noun", "Charge your laptop.", "Sac m?y t?nh x?ch tay.", lessonId = 18, difficulty = 2, category = "technology"),
-                WordEntity("charger", "sac", "char-jer", "noun", "I lost my charger.", "T?i m?t s?c r?i.", lessonId = 18, difficulty = 2, category = "technology"),
-                WordEntity("password", "m?t kh?u", "pass-word", "noun", "Reset your password.", "Dat lai m?t kh?u.", lessonId = 18, difficulty = 2, category = "technology"),
-                WordEntity("app", "?ng d?ng", "app", "noun", "Download the new app.", "Tai ?ng d?ng moi.", lessonId = 18, difficulty = 2, category = "technology"),
+                WordEntity("smartphone", "di?n tho?i thông minh", "smart-phone", "noun", "My smartphone is slow.", "Ði?n tho?i thông minh c?a tôi ch?m.", lessonId = 18, difficulty = 2, category = "technology"),
+                WordEntity("laptop", "máy tính xách tay", "lap-top", "noun", "Charge your laptop.", "S?c máy tính xách tay.", lessonId = 18, difficulty = 2, category = "technology"),
+                WordEntity("charger", "s?c", "char-jer", "noun", "I lost my charger.", "Tôi m?t s?c r?i.", lessonId = 18, difficulty = 2, category = "technology"),
+                WordEntity("password", "m?t kh?u", "pass-word", "noun", "Reset your password.", "Ð?t l?i m?t kh?u.", lessonId = 18, difficulty = 2, category = "technology"),
+                WordEntity("app", "?ng d?ng", "app", "noun", "Download the new app.", "T?i ?ng d?ng m?i.", lessonId = 18, difficulty = 2, category = "technology"),
                 WordEntity("update", "c?p nh?t", "up-date", "verb", "Update the software.", "C?p nh?t ph?n m?m.", lessonId = 18, difficulty = 2, category = "technology"),
                 
                 // Lesson 19 - Weather & Events (6 words)
-                WordEntity("sunny", "nang", "sun-ny", "adjective", "It is sunny today.", "H?m nay tr?i n?ng.", lessonId = 19, difficulty = 1, category = "weather"),
-                WordEntity("rainy", "mua", "ray-ny", "adjective", "The weather is rainy.", "Tr?i ?ang m?a.", lessonId = 19, difficulty = 1, category = "weather"),
-                WordEntity("storm", "bao", "storm", "noun", "A storm is coming.", "B?o ?ang ??n.", lessonId = 19, difficulty = 2, category = "weather"),
-                WordEntity("forecast", "d? b?o th?i ti?t", "for-cast", "noun", "Check the forecast.", "Kiem tra d? b?o th?i ti?t.", lessonId = 19, difficulty = 2, category = "weather"),
-                WordEntity("picnic", "?i ch?i ngo?i tr?i", "pic-nic", "noun", "Plan a picnic this weekend.", "L?n k? ho?ch picnic cu?i tu?n n?y.", lessonId = 19, difficulty = 1, category = "events"),
-                WordEntity("festival", "l? h?i", "fes-ti-val", "noun", "The festival is crowded.", "L? h?i ??ng ??c.", lessonId = 19, difficulty = 2, category = "events"),
+                WordEntity("sunny", "n?ng", "sun-ny", "adjective", "It is sunny today.", "Hôm nay tr?i n?ng.", lessonId = 19, difficulty = 1, category = "weather"),
+                WordEntity("rainy", "mua", "ray-ny", "adjective", "The weather is rainy.", "Tr?i dang mua.", lessonId = 19, difficulty = 1, category = "weather"),
+                WordEntity("storm", "bão", "storm", "noun", "A storm is coming.", "Bão dang d?n.", lessonId = 19, difficulty = 2, category = "weather"),
+                WordEntity("forecast", "d? báo th?i ti?t", "for-cast", "noun", "Check the forecast.", "Ki?m tra d? báo th?i ti?t.", lessonId = 19, difficulty = 2, category = "weather"),
+                WordEntity("picnic", "di choi ngoài tr?i", "pic-nic", "noun", "Plan a picnic this weekend.", "Lên k? ho?ch picnic cu?i tu?n này.", lessonId = 19, difficulty = 1, category = "events"),
+                WordEntity("festival", "l? h?i", "fes-ti-val", "noun", "The festival is crowded.", "L? h?i dông dúc.", lessonId = 19, difficulty = 2, category = "events"),
                 
                 // Lesson 20 - Emergency & Help (6 words)
-                WordEntity("emergency", "kh?n c?p", "e-mer-gen-cy", "noun", "Call in an emergency.", "Goi khi kh?n c?p.", lessonId = 20, difficulty = 3, category = "safety"),
-                WordEntity("ambulance", "xe c?u th??ng", "am-byu-lans", "noun", "Call an ambulance.", "Goi xe c?u th??ng.", lessonId = 20, difficulty = 3, category = "safety"),
-                WordEntity("police", "c?nh s?t", "po-lice", "noun", "Call the police.", "Goi c?nh s?t.", lessonId = 20, difficulty = 3, category = "safety"),
-                WordEntity("fire", "chay", "fire", "noun", "There is a fire!", "C? ch?y!", lessonId = 20, difficulty = 3, category = "safety"),
-                WordEntity("help", "gi?p ??", "help", "verb", "Please help me!", "L?m ?n gi?p t?i!", lessonId = 20, difficulty = 2, category = "safety"),
-                WordEntity("lost", "l?c ???ng", "lost", "adjective", "I am lost.", "T?i b? l?c.", lessonId = 20, difficulty = 2, category = "directions"),
+                WordEntity("emergency", "kh?n c?p", "e-mer-gen-cy", "noun", "Call in an emergency.", "G?i khi kh?n c?p.", lessonId = 20, difficulty = 3, category = "safety"),
+                WordEntity("ambulance", "xe c?u thuong", "am-byu-lans", "noun", "Call an ambulance.", "G?i xe c?u thuong.", lessonId = 20, difficulty = 3, category = "safety"),
+                WordEntity("police", "c?nh sát", "po-lice", "noun", "Call the police.", "G?i c?nh sát.", lessonId = 20, difficulty = 3, category = "safety"),
+                WordEntity("fire", "cháy", "fire", "noun", "There is a fire!", "Có cháy!", lessonId = 20, difficulty = 3, category = "safety"),
+                WordEntity("help", "giúp d?", "help", "verb", "Please help me!", "Làm on giúp tôi!", lessonId = 20, difficulty = 2, category = "safety"),
+                WordEntity("lost", "l?c du?ng", "lost", "adjective", "I am lost.", "Tôi b? l?c.", lessonId = 20, difficulty = 2, category = "directions"),
                 
                 // Lesson 1 - Additional words to complete full 20-word set
                 WordEntity(
                     id = 1001,
                     word = "good morning",
-                    translation = "ch?o bu?i s?ng",
+                    translation = "chào bu?i sáng",
                     pronunciation = "gud MOR-ning",
                     partOfSpeech = "phrase",
                     exampleSentence = "Good morning, class!",
-                    exampleTranslation = "Chao bu?i s?ng ca lop!",
+                    exampleTranslation = "Chào bu?i sáng c? l?p!",
                     lessonId = 1,
                     difficulty = 1,
                     category = "greetings"
@@ -563,11 +588,11 @@ abstract class AppDatabase : RoomDatabase() {
                 WordEntity(
                     id = 1002,
                     word = "good afternoon",
-                    translation = "ch?o bu?i chi?u",
+                    translation = "chào bu?i chi?u",
                     pronunciation = "gud AF-ter-noon",
                     partOfSpeech = "phrase",
                     exampleSentence = "Good afternoon, how are you?",
-                    exampleTranslation = "Chao buoi chieu, b?n kh?e kh?ng?",
+                    exampleTranslation = "Chào bu?i chi?u, b?n kh?e không?",
                     lessonId = 1,
                     difficulty = 1,
                     category = "greetings"
@@ -575,11 +600,11 @@ abstract class AppDatabase : RoomDatabase() {
                 WordEntity(
                     id = 1003,
                     word = "good evening",
-                    translation = "chao bu?i t?i",
+                    translation = "chào bu?i t?i",
                     pronunciation = "gud EEV-ning",
                     partOfSpeech = "phrase",
                     exampleSentence = "Good evening everyone.",
-                    exampleTranslation = "Chao bu?i t?i moi nguoi.",
+                    exampleTranslation = "Chào bu?i t?i m?i ngu?i.",
                     lessonId = 1,
                     difficulty = 1,
                     category = "greetings"
@@ -587,11 +612,11 @@ abstract class AppDatabase : RoomDatabase() {
                 WordEntity(
                     id = 1004,
                     word = "good night",
-                    translation = "ch?c ng? ngon",
+                    translation = "chúc ng? ngon",
                     pronunciation = "gud nait",
                     partOfSpeech = "phrase",
                     exampleSentence = "Good night and sweet dreams.",
-                    exampleTranslation = "Ch?c ng? ngon v? m? ??p.",
+                    exampleTranslation = "Chúc ng? ngon và mo d?p.",
                     lessonId = 1,
                     difficulty = 1,
                     category = "greetings"
@@ -603,7 +628,7 @@ abstract class AppDatabase : RoomDatabase() {
                     pronunciation = "nais",
                     partOfSpeech = "adjective",
                     exampleSentence = "It is nice to meet you.",
-                    exampleTranslation = "R?t vui ???c g?p b?n.",
+                    exampleTranslation = "R?t vui du?c g?p b?n.",
                     lessonId = 1,
                     difficulty = 1,
                     category = "introductions"
@@ -611,11 +636,11 @@ abstract class AppDatabase : RoomDatabase() {
                 WordEntity(
                     id = 1006,
                     word = "meet",
-                    translation = "gap",
+                    translation = "g?p",
                     pronunciation = "meet",
                     partOfSpeech = "verb",
                     exampleSentence = "I want to meet new friends.",
-                    exampleTranslation = "T?i mu?n g?p b?n m?i.",
+                    exampleTranslation = "Tôi mu?n g?p b?n m?i.",
                     lessonId = 1,
                     difficulty = 1,
                     category = "introductions"
@@ -627,7 +652,7 @@ abstract class AppDatabase : RoomDatabase() {
                     pronunciation = "SOR-ree",
                     partOfSpeech = "adjective",
                     exampleSentence = "I am sorry for being late.",
-                    exampleTranslation = "Toi xin l?i vi den tre.",
+                    exampleTranslation = "Tôi xin l?i vì d?n tr?.",
                     lessonId = 1,
                     difficulty = 1,
                     category = "politeness"
@@ -635,11 +660,11 @@ abstract class AppDatabase : RoomDatabase() {
                 WordEntity(
                     id = 1008,
                     word = "excuse me",
-                    translation = "xin phep / xin l?i",
+                    translation = "xin phép / xin l?i",
                     pronunciation = "ex-kyooz mee",
                     partOfSpeech = "phrase",
                     exampleSentence = "Excuse me, where is the bus stop?",
-                    exampleTranslation = "Xin l?i, tr?m xe ? ??u?",
+                    exampleTranslation = "Xin l?i, tr?m xe ? dâu?",
                     lessonId = 1,
                     difficulty = 1,
                     category = "politeness"
@@ -651,21 +676,21 @@ abstract class AppDatabase : RoomDatabase() {
                 // Lesson 1 - Basics 1
                 ExerciseEntity(
                     lessonId = 1, wordId = 1, type = "MULTIPLE_CHOICE",
-                    question = "What is 'xin chao' in English?",
+                    question = "What is 'xin chào' in English?",
                     correctAnswer = "hello",
                     optionA = "hello", optionB = "goodbye", optionC = "thank you", optionD = "please",
                     order = 1, difficulty = 1
                 ),
                 ExerciseEntity(
                     lessonId = 1, wordId = 3, type = "MULTIPLE_CHOICE",
-                    question = "How do you say 't?m bi?t'?",
+                    question = "How do you say 'tạm biệt'?",
                     correctAnswer = "goodbye",
                     optionA = "hello", optionB = "goodbye", optionC = "yes", optionD = "no",
                     order = 2, difficulty = 1
                 ),
                 ExerciseEntity(
                     lessonId = 1, wordId = 5, type = "MULTIPLE_CHOICE",
-                    question = "Which word means 'c?m ?n'?",
+                    question = "Which word means 'cảm ơn'?",
                     correctAnswer = "thank you",
                     optionA = "please", optionB = "thank you", optionC = "sorry", optionD = "hi",
                     order = 3, difficulty = 1
@@ -686,7 +711,7 @@ abstract class AppDatabase : RoomDatabase() {
                 ),
                 ExerciseEntity(
                     lessonId = 1, wordId = 10, type = "TRANSLATION",
-                    question = "Translate: T?i l? Nam.",
+                    question = "Translate: Tôi là Nam.",
                     correctAnswer = "I am Nam",
                     order = 6, difficulty = 1
                 ),
@@ -695,10 +720,10 @@ abstract class AppDatabase : RoomDatabase() {
                     question = "Match the greetings",
                     correctAnswer = "",
                     matchPairs = """[
-                        {"left":"hello","right":"xin chao"},
-                        {"left":"goodbye","right":"t?m bi?t"},
-                        {"left":"please","right":"l?m ?n"},
-                        {"left":"yes","right":"vang"}
+                        {"left":"hello","right":"xin chào"},
+                        {"left":"goodbye","right":"tạm biệt"},
+                        {"left":"please","right":"làm ơn"},
+                        {"left":"yes","right":"vâng"}
                     ]""".trimIndent(),
                     order = 7, difficulty = 1
                 ),
@@ -711,7 +736,7 @@ abstract class AppDatabase : RoomDatabase() {
                 ),
                 ExerciseEntity(
                     lessonId = 1, wordId = 1001, type = "MULTIPLE_CHOICE",
-                    question = "How do you say 'ch?o bu?i s?ng'?",
+                    question = "How do you say 'chào buổi sáng'?",
                     correctAnswer = "good morning",
                     optionA = "good morning", optionB = "good evening", optionC = "good night", optionD = "goodbye",
                     order = 9, difficulty = 1
@@ -725,14 +750,14 @@ abstract class AppDatabase : RoomDatabase() {
                 ),
                 ExerciseEntity(
                     lessonId = 1, wordId = 1007, type = "LISTENING",
-                    question = "Choose the phrase meaning 'xin l?i'",
+                    question = "Choose the phrase meaning 'xin lỗi'",
                     correctAnswer = "sorry",
                     optionA = "thank you", optionB = "sorry", optionC = "please", optionD = "excuse me",
                     order = 11, difficulty = 1
                 ),
                 ExerciseEntity(
                     lessonId = 1, wordId = 1004, type = "TRANSLATION",
-                    question = "Dich: Chuc ngu ngon.",
+                    question = "Dịch: Chúc ngủ ngon.",
                     correctAnswer = "Good night",
                     order = 12, difficulty = 1
                 ),
@@ -740,21 +765,21 @@ abstract class AppDatabase : RoomDatabase() {
                 // Lesson 2 - Basics 2
                 ExerciseEntity(
                     lessonId = 2, wordId = 13, type = "MULTIPLE_CHOICE",
-                    question = "How do you say 'anh ?y'?",
+                    question = "How do you say 'anh ấy'?",
                     correctAnswer = "he",
                     optionA = "he", optionB = "she", optionC = "they", optionD = "we",
                     order = 1, difficulty = 1
                 ),
                 ExerciseEntity(
                     lessonId = 2, wordId = 14, type = "MULTIPLE_CHOICE",
-                    question = "Translate 'c? ?y'",
+                    question = "Translate 'cô ấy'",
                     correctAnswer = "she",
                     optionA = "he", optionB = "she", optionC = "girl", optionD = "woman",
                     order = 2, difficulty = 1
                 ),
                 ExerciseEntity(
                     lessonId = 2, wordId = 15, type = "MULTIPLE_CHOICE",
-                    question = "Which word means 'ch?ng t?i'?",
+                    question = "Which word means 'chúng tôi'?",
                     correctAnswer = "we",
                     optionA = "they", optionB = "you", optionC = "we", optionD = "I",
                     order = 3, difficulty = 1
@@ -775,7 +800,7 @@ abstract class AppDatabase : RoomDatabase() {
                 ),
                 ExerciseEntity(
                     lessonId = 2, wordId = 20, type = "TRANSLATION",
-                    question = "Dich: Day la mot co gai.",
+                    question = "Dịch: Đây là một cô gái.",
                     correctAnswer = "This is a girl",
                     order = 6, difficulty = 1
                 ),
@@ -784,16 +809,16 @@ abstract class AppDatabase : RoomDatabase() {
                     question = "Match pronouns",
                     correctAnswer = "",
                     matchPairs = """[
-                        {"left":"he","right":"anh ?y"},
-                        {"left":"she","right":"c? ?y"},
-                        {"left":"we","right":"ch?ng t?i"},
-                        {"left":"they","right":"ho"}
+                        {"left":"he","right":"anh ấy"},
+                        {"left":"she","right":"cô ấy"},
+                        {"left":"we","right":"chúng tôi"},
+                        {"left":"they","right":"họ"}
                     ]""".trimIndent(),
                     order = 7, difficulty = 1
                 ),
                 ExerciseEntity(
                     lessonId = 2, wordId = 24, type = "LISTENING",
-                    question = "Choose the word for 'viet'",
+                    question = "Choose the word for 'viết'",
                     correctAnswer = "write",
                     optionA = "read", optionB = "write", optionC = "eat", optionD = "woman",
                     order = 8, difficulty = 1
@@ -1401,3 +1426,8 @@ private data class SeedPayload(
     val words: List<WordEntity>,
     val exercises: List<ExerciseEntity>
 )
+
+
+
+
+

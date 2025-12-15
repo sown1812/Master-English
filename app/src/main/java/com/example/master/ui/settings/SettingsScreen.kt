@@ -2,7 +2,6 @@ package com.example.master.ui.settings
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -57,26 +56,20 @@ fun SettingsScreen(
             onCheckedChange = { viewModel.toggleNotifications(it) }
         )
 
-        ReminderCard(
-            enabled = state.reminderEnabled,
-            time = state.reminderTime,
-            onToggle = viewModel::toggleReminder,
-            onTimeChange = viewModel::updateReminderTime
-        )
-
-        ReminderCard(
-            enabled = state.reminderEnabled,
-            time = state.reminderTime,
-            onToggle = viewModel::toggleReminder,
-            onTimeChange = viewModel::updateReminderTime
-        )
-
         SettingToggle(
             icon = { Icon(Icons.Filled.VolumeUp, contentDescription = null) },
             title = "Âm thanh",
             description = "Bật tắt hiệu ứng âm thanh",
             checked = state.soundEnabled,
             onCheckedChange = { viewModel.toggleSound(it) }
+        )
+
+        SettingToggle(
+            icon = { Icon(Icons.Filled.VolumeUp, contentDescription = null) },
+            title = "Tự phát audio",
+            description = "Tự phát chậm khi vào bài mới",
+            checked = state.autoPlayAudio,
+            onCheckedChange = { viewModel.toggleAutoPlay(it) }
         )
 
         SettingToggle(
@@ -87,15 +80,40 @@ fun SettingsScreen(
             onCheckedChange = { viewModel.toggleDarkMode(it) }
         )
 
-        SettingToggle(
-            icon = { Icon(Icons.Filled.VolumeUp, contentDescription = null) },
-            title = "Tự phát audio",
-            description = "Tự đọc chậm khi vào bài mới",
-            checked = state.autoPlayAudio,
-            onCheckedChange = { viewModel.toggleAutoPlay(it) }
+        ReminderCard(
+            enabled = state.reminderEnabled,
+            time = state.reminderTime,
+            onToggle = viewModel::toggleReminder,
+            onTimeChange = viewModel::updateReminderTime
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier.padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Text("Tải trước để học offline", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                Text(
+                    text = "Lưu bài học và audio về máy, có thể học khi không có mạng.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF6B7280)
+                )
+                Button(
+                    onClick = { viewModel.prefetchOfflineContent() },
+                    enabled = !state.isOfflineDownloading,
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
+                ) {
+                    Text(if (state.isOfflineDownloading) "Đang tải..." else "Tải ngay", color = Color.White)
+                }
+                if (state.offlineStatus.isNotBlank()) {
+                    Text(state.offlineStatus, style = MaterialTheme.typography.bodySmall, color = Color(0xFF0F172A))
+                }
+            }
+        }
 
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -121,14 +139,14 @@ fun SettingsScreen(
                         }
                     },
                     enabled = !state.isProcessing,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48))
                 ) {
-                    Icon(Icons.Filled.PowerSettingsNew, contentDescription = null)
+                    Icon(Icons.Filled.PowerSettingsNew, contentDescription = null, tint = Color.White)
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Đăng xuất", color = Color.White)
                 }
                 state.message?.let {
-                    Text(text = it, color = Color(0xFFEF4444), style = MaterialTheme.typography.bodySmall)
+                    Text(it, color = Color(0xFF0F172A), style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -146,27 +164,22 @@ private fun SettingToggle(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .height(42.dp)
-                    .width(42.dp)
-                    .background(Color(0xFFE0E7FF), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center
-            ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                 icon()
-            }
-            Spacer(modifier = Modifier.width(12.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium)
-                Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
+                    Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                }
             }
             Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
@@ -187,44 +200,33 @@ private fun ReminderCard(
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Icon(Icons.Filled.Schedule, contentDescription = null, tint = Color(0xFF6366F1))
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Filled.Schedule, contentDescription = null)
                     Column {
-                        Text("Nhắc học hằng ngày", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                        Text("Giờ nhắc: $time", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                        Text("Nhắc giờ học", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
+                        Text("Thiết lập nhắc giờ hằng ngày", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
                     }
                 }
                 Switch(checked = enabled, onCheckedChange = onToggle)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("Chọn giờ:", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
-                Button(
-                    onClick = { onTimeChange("20:00") },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (time == "20:00") Color(0xFF6366F1) else Color(0xFFE5E7EB),
-                        contentColor = if (time == "20:00") Color.White else Color(0xFF111827)
-                    )
-                ) { Text("20:00") }
-                Button(
-                    onClick = { onTimeChange("21:00") },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if (time == "21:00") Color(0xFF6366F1) else Color(0xFFE5E7EB),
-                        contentColor = if (time == "21:00") Color.White else Color(0xFF111827)
-                    )
-                ) { Text("21:00") }
+            if (enabled) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Giờ nhắc: $time", style = MaterialTheme.typography.bodyMedium)
+                    Button(
+                        onClick = { onTimeChange(time) },
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9))
+                    ) {
+                        Text("Đổi giờ", color = Color.White)
+                    }
+                }
             }
-            Text(
-                text = "Bật nhắc giờ để duy trì streak. (Chưa kết nối hệ thống thông báo nền).",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF9CA3AF)
-            )
         }
     }
 }

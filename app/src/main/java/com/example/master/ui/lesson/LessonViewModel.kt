@@ -23,6 +23,7 @@ private const val FAIL_COIN_REWARD = 4
 @HiltViewModel
 class LessonViewModel @Inject constructor(
     private val repository: LearningRepository,
+    private val syncManager: com.example.master.sync.SyncManager,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
@@ -349,6 +350,12 @@ class LessonViewModel @Inject constructor(
                 isAnswerReady = false
             )
         }
+
+        if (!evaluation.isCorrect) {
+            viewModelScope.launch {
+                logMistake(currentExercise, evaluation)
+            }
+        }
         
         if (!evaluation.isCorrect && newHearts == 0) {
             completeLesson(forceFail = true)
@@ -410,6 +417,10 @@ class LessonViewModel @Inject constructor(
                     completedAt = if (isPassed) System.currentTimeMillis() else null
                 )
                 repository.saveProgress(progress)
+                runCatching {
+                    syncManager.enqueueLatestState()
+                    syncManager.flushQueue()
+                }
             }
             
             _uiState.update {
@@ -469,6 +480,32 @@ class LessonViewModel @Inject constructor(
     
     private fun getCurrentExercise(): Exercise? {
         return _uiState.value.exercises.getOrNull(_uiState.value.currentExerciseIndex)
+    }
+
+    private suspend fun logMistake(exercise: Exercise, evaluation: ExerciseEvaluation) {
+        val userId = repository.getCurrentUserSync()?.userId ?: return
+        val userAnswer = when (exercise) {
+            is Exercise.MultipleChoice -> exercise.selectedAnswer.orEmpty()
+            is Exercise.FillBlank -> exercise.userAnswer
+            is Exercise.Matching -> exercise.selectedPairs.entries.joinToString { "${it.key}→${it.value}" }
+            is Exercise.Translation -> exercise.userAnswer
+            is Exercise.Listening -> exercise.selectedAnswer.orEmpty()
+            is Exercise.Speaking -> exercise.recognizedText
+            is Exercise.PictureMatching -> exercise.selectedOptionId.orEmpty()
+            is Exercise.Flashcard -> if (exercise.isRemembered == true) "remembered" else "forgot"
+        }
+
+        val mistake = com.example.master.data.local.entity.MistakeEntity(
+            userId = userId,
+            lessonId = lessonId,
+            exerciseId = exercise.id,
+            wordId = exercise.word?.id,
+            question = exercise.question,
+            userAnswer = userAnswer,
+            correctAnswer = exercise.correctAnswer,
+            reason = evaluation.explanation ?: evaluation.feedback
+        )
+        repository.saveMistake(mistake)
     }
     
     fun getLessonResult(): LessonResult {

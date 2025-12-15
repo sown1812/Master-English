@@ -22,6 +22,7 @@ class LearningRepository @Inject constructor(
     private val userDao = database.userDao()
     private val progressDao = database.userProgressDao()
     private val achievementDao = database.achievementDao()
+    private val mistakeDao = database.mistakeDao()
     
     private val oneDayInMillis = 24 * 60 * 60 * 1000L
     
@@ -48,6 +49,23 @@ class LearningRepository @Inject constructor(
     fun searchWords(query: String): Flow<List<WordEntity>> = wordDao.searchWords(query)
     
     suspend fun getTotalWordsCount(): Int = wordDao.getTotalWordsCount()
+
+    // ==================== Mistakes ====================
+
+    fun getMistakes(userId: String): Flow<List<MistakeEntity>> =
+        mistakeDao.getMistakes(userId)
+
+    fun getMistakesByLesson(userId: String, lessonId: Int): Flow<List<MistakeEntity>> =
+        mistakeDao.getMistakesByLesson(userId, lessonId)
+
+    suspend fun saveMistake(mistake: MistakeEntity) = mistakeDao.insertMistake(mistake)
+
+    suspend fun deleteMistake(id: Int) = mistakeDao.deleteMistake(id)
+
+    suspend fun deleteMistakesByLesson(userId: String, lessonId: Int) =
+        mistakeDao.deleteMistakesByLesson(userId, lessonId)
+
+    suspend fun deleteAllMistakes(userId: String) = mistakeDao.deleteAll(userId)
     
     // ==================== Exercises ====================
     

@@ -17,6 +17,14 @@ class SyncManager @Inject constructor(
     private val pendingSyncStore: PendingSyncStore
 ) {
     suspend fun syncNow() {
+        enqueueLatestState()
+        flushQueue()
+    }
+
+    /**
+     * Lưu snapshot hiện tại (user + progress + achievements) vào hàng đợi để đồng bộ khi có mạng.
+     */
+    suspend fun enqueueLatestState() {
         val userId = authManager.getCurrentUserId() ?: return
         val user = repository.getUserByIdSync(userId) ?: return
         val progress = repository.getUserProgress(userId).firstOrNull().orEmpty()
@@ -28,8 +36,15 @@ class SyncManager @Inject constructor(
             achievements = achievements
         )
 
+        pendingSyncStore.enqueue(payload)
+    }
+
+    /**
+     * Đẩy toàn bộ queue lên server, giữ lại các mục lỗi để thử lại lần sau.
+     */
+    suspend fun flushQueue() {
         val queued = pendingSyncStore.getQueue().toMutableList()
-        queued.add(payload)
+        if (queued.isEmpty()) return
 
         val remaining = mutableListOf<SyncPayload>()
         for (item in queued) {

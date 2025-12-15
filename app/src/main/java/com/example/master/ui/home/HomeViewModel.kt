@@ -18,7 +18,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class HomeViewModel @Inject constructor(
     private val repository: LearningRepository,
-    private val authManager: AuthManager
+    private val authManager: AuthManager,
+    private val syncManager: com.example.master.sync.SyncManager
 ) : ViewModel() {
     private val _uiState = mutableStateOf(HomeUiState.sample())
     val uiState: State<HomeUiState> = _uiState
@@ -28,6 +29,7 @@ class HomeViewModel @Inject constructor(
 
     init {
         observeData()
+        flushPendingSync()
     }
 
     private fun observeData() {
@@ -63,6 +65,12 @@ class HomeViewModel @Inject constructor(
                     themes = _uiState.value.themes
                 )
             }.collectLatest { state -> _uiState.value = state }
+        }
+    }
+
+    private fun flushPendingSync() {
+        viewModelScope.launch {
+            runCatching { syncManager.flushQueue() }
         }
     }
 
