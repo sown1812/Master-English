@@ -1,6 +1,7 @@
 package com.example.server.routes
 
 import com.example.server.auth.ensureUser
+import com.example.server.dbQuery
 import com.example.server.model.*
 import com.example.server.tables.DailyChallenges
 import com.example.server.tables.UserBoosters
@@ -11,7 +12,6 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
 import java.sql.Connection
 
 fun Route.gameStateRoutes() {
@@ -21,24 +21,21 @@ fun Route.gameStateRoutes() {
                 HttpStatusCode.BadRequest, mapOf("error" to "Missing userId")
             )
             if (!call.ensureUser(userId)) return@get
-            val boosters = transaction {
-                UserBoosters.selectAll().where { UserBoosters.userId eq userId }.map {
+
+            val (boosters, quests, daily) = dbQuery {
+                val boosters = UserBoosters.selectAll().where { UserBoosters.userId eq userId }.map {
                     BoosterStateDto(
                         boosterKey = it[UserBoosters.boosterKey],
                         isOwned = it[UserBoosters.isOwned]
                     )
                 }
-            }
-            val quests = transaction {
-                UserQuests.selectAll().where { UserQuests.userId eq userId }.map {
+                val quests = UserQuests.selectAll().where { UserQuests.userId eq userId }.map {
                     QuestStateDto(
                         questKey = it[UserQuests.questKey],
                         isClaimed = it[UserQuests.isClaimed]
                     )
                 }
-            }
-            val daily = transaction {
-                DailyChallenges.selectAll().where { DailyChallenges.userId eq userId }
+                val daily = DailyChallenges.selectAll().where { DailyChallenges.userId eq userId }
                     .limit(1)
                     .firstOrNull()
                     ?.let {
@@ -48,6 +45,8 @@ fun Route.gameStateRoutes() {
                             target = it[DailyChallenges.target]
                         )
                     }
+
+                Triple(boosters, quests, daily)
             }
             call.respond(GameStateResponse(boosters = boosters, quests = quests, daily = daily))
         }
@@ -58,7 +57,7 @@ fun Route.gameStateRoutes() {
             )
             if (!call.ensureUser(userId)) return@post
             val req = call.receive<UpdateBoosterRequest>()
-            transaction(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
+            dbQuery(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
                 UserBoosters.insertIgnore {
                     it[UserBoosters.userId] = userId
                     it[UserBoosters.boosterKey] = req.boosterKey
@@ -79,7 +78,7 @@ fun Route.gameStateRoutes() {
             )
             if (!call.ensureUser(userId)) return@post
             val req = call.receive<UpdateQuestRequest>()
-            transaction(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
+            dbQuery(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
                 UserQuests.insertIgnore {
                     it[UserQuests.userId] = userId
                     it[questKey] = req.questKey
@@ -100,7 +99,7 @@ fun Route.gameStateRoutes() {
             )
             if (!call.ensureUser(userId)) return@post
             val req = call.receive<UpdateDailyRequest>()
-            transaction(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
+            dbQuery(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
                 DailyChallenges.insertIgnore {
                     it[DailyChallenges.userId] = userId
                     it[status] = req.status

@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.example.master.network.SyncPayload
+import com.example.master.network.SyncPayloadRemote
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.flow.first
@@ -13,20 +13,24 @@ class PendingSyncStore(private val context: Context, private val gson: Gson) {
     private val Context.dataStore by preferencesDataStore(name = "pending_sync_queue")
     private val queueKey = stringPreferencesKey("queue_json")
 
-    suspend fun getQueue(): List<SyncPayload> {
+    suspend fun getQueue(): List<SyncPayloadRemote> {
         val json = context.dataStore.data.first()[queueKey] ?: return emptyList()
+        if (isLegacyQueue(json)) {
+            clear()
+            return emptyList()
+        }
         return runCatching {
-            val type = object : TypeToken<List<SyncPayload>>() {}.type
-            gson.fromJson<List<SyncPayload>>(json, type)
+            val type = object : TypeToken<List<SyncPayloadRemote>>() {}.type
+            gson.fromJson<List<SyncPayloadRemote>>(json, type)
         }.getOrDefault(emptyList())
     }
 
-    suspend fun saveQueue(queue: List<SyncPayload>) {
+    suspend fun saveQueue(queue: List<SyncPayloadRemote>) {
         val json = gson.toJson(queue)
         context.dataStore.edit { prefs -> prefs[queueKey] = json }
     }
 
-    suspend fun enqueue(payload: SyncPayload) {
+    suspend fun enqueue(payload: SyncPayloadRemote) {
         val current = getQueue().toMutableList()
         current.add(payload)
         saveQueue(current)
@@ -35,4 +39,7 @@ class PendingSyncStore(private val context: Context, private val gson: Gson) {
     suspend fun clear() {
         context.dataStore.edit { prefs -> prefs.remove(queueKey) }
     }
+
+    private fun isLegacyQueue(json: String): Boolean =
+        json.contains("\"totalXP\"") || json.contains("\"lastSyncedAt\"")
 }

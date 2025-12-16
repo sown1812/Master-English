@@ -11,6 +11,7 @@ import com.example.server.routes.leaderboardRoutes
 import com.example.server.routes.syncRoutes
 import com.typesafe.config.ConfigFactory
 import io.ktor.serialization.kotlinx.json.*
+import io.ktor.server.plugins.*
 import io.ktor.server.application.*
 import io.ktor.server.auth.*
 import io.ktor.server.engine.*
@@ -19,6 +20,7 @@ import io.ktor.server.plugins.contentnegotiation.*
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
+import kotlinx.serialization.SerializationException
 
 fun Application.module() {
     if (pluginOrNull(ContentNegotiation) == null) {
@@ -28,8 +30,14 @@ fun Application.module() {
         install(StatusPages) {
             exception<Throwable> { call, cause ->
                 val status = when (cause) {
+                    is BadRequestException,
+                    is ContentTransformationException,
+                    is SerializationException,
                     is IllegalArgumentException -> io.ktor.http.HttpStatusCode.BadRequest
                     else -> io.ktor.http.HttpStatusCode.InternalServerError
+                }
+                if (status == io.ktor.http.HttpStatusCode.InternalServerError) {
+                    call.application.log.error("Unhandled error", cause)
                 }
                 call.respond(status, mapOf("error" to (cause.message ?: "Unexpected error")))
             }

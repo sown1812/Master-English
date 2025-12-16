@@ -7,6 +7,7 @@ import okhttp3.Response
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.io.IOException
+import java.util.concurrent.TimeUnit
 
 class RetryInterceptorTest {
 
@@ -46,11 +47,11 @@ class RetryInterceptorTest {
 
         override fun call() = throw NotImplementedError()
         override fun connectTimeoutMillis() = 0
-        override fun withConnectTimeout(timeout: Int, unit: java.util.concurrent.TimeUnit?) = this
+        override fun withConnectTimeout(timeout: Int, unit: TimeUnit) = this
         override fun readTimeoutMillis() = 0
-        override fun withReadTimeout(timeout: Int, unit: java.util.concurrent.TimeUnit?) = this
+        override fun withReadTimeout(timeout: Int, unit: TimeUnit) = this
         override fun writeTimeoutMillis() = 0
-        override fun withWriteTimeout(timeout: Int, unit: java.util.concurrent.TimeUnit?) = this
+        override fun withWriteTimeout(timeout: Int, unit: TimeUnit) = this
         override fun connection() = null
     }
 }

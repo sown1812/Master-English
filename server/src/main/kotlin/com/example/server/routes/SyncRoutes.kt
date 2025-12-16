@@ -1,6 +1,7 @@
 package com.example.server.routes
 
 import com.example.server.auth.ensureUser
+import com.example.server.dbQuery
 import com.example.server.model.AchievementDto
 import com.example.server.model.ProgressDto
 import com.example.server.model.SyncPayload
@@ -16,7 +17,6 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Route.syncRoutes() {
     route("/sync") {
@@ -24,7 +24,7 @@ fun Route.syncRoutes() {
             val payload = call.receive<SyncPayload>()
             if (!call.ensureUser(payload.user.userId)) return@post
 
-            val response = transaction {
+            val response = dbQuery {
                 upsertUser(payload.user)
                 replaceProgress(payload.user.userId, payload.progress)
                 replaceAchievements(payload.user.userId, payload.achievements)

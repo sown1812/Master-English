@@ -1,6 +1,7 @@
 package com.example.server.routes
 
 import com.example.server.model.LeaderboardEntryDto
+import com.example.server.dbQuery
 import com.example.server.tables.Users
 import io.ktor.http.*
 import io.ktor.server.application.*
@@ -8,16 +9,15 @@ import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Route.leaderboardRoutes() {
     get("/leaderboard") {
-        val limit = call.request.queryParameters["limit"]?.toIntOrNull() ?: 20
-        val data = transaction {
+        val limit = call.request.queryParameters["limit"]?.toIntOrNull()?.coerceIn(1, 100) ?: 20
+        val data = dbQuery {
             Users
                 .selectAll()
                 .orderBy(Users.totalXp to SortOrder.DESC)
-                .limit(limit, 0)
+                .limit(limit)
                 .map {
                     LeaderboardEntryDto(
                         userId = it[Users.userId],

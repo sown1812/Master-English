@@ -1,18 +1,19 @@
 package com.example.server.routes
 
 import com.example.server.model.LessonDto
+import com.example.server.dbQuery
 import com.example.server.tables.Lessons
+import io.ktor.http.HttpStatusCode
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Route.lessonRoutes() {
     route("/lessons") {
         get {
-            val items = transaction {
+            val items = dbQuery {
                 Lessons.selectAll()
                     .orderBy(Lessons.order, SortOrder.ASC)
                     .map {
@@ -39,10 +40,10 @@ fun Route.lessonRoutes() {
         get("/{id}") {
             val id = call.parameters["id"]?.toIntOrNull()
             if (id == null) {
-                call.respond(mapOf("error" to "Invalid id"))
+                call.respond(HttpStatusCode.BadRequest, mapOf("error" to "Invalid id"))
                 return@get
             }
-            val item = transaction {
+            val item = dbQuery {
                 Lessons.selectAll().where { Lessons.id eq id }.limit(1).firstOrNull()?.let {
                     LessonDto(
                         id = it[Lessons.id],
@@ -62,7 +63,7 @@ fun Route.lessonRoutes() {
                 }
             }
             if (item == null) {
-                call.respond(mapOf("error" to "Lesson not found"))
+                call.respond(HttpStatusCode.NotFound, mapOf("error" to "Lesson not found"))
             } else {
                 call.respond(item)
             }

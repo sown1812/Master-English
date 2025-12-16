@@ -4,7 +4,9 @@ import com.example.master.auth.AuthManager
 import com.example.master.data.local.PendingSyncStore
 import com.example.master.data.repository.LearningRepository
 import com.example.master.network.ApiService
-import com.example.master.network.SyncPayload
+import com.example.master.network.SyncPayloadRemote
+import com.example.master.network.toEntity
+import com.example.master.network.toRemote
 import javax.inject.Inject
 import javax.inject.Singleton
 import kotlinx.coroutines.flow.firstOrNull
@@ -30,10 +32,10 @@ class SyncManager @Inject constructor(
         val progress = repository.getUserProgress(userId).firstOrNull().orEmpty()
         val achievements = repository.getUserAchievements(userId).firstOrNull().orEmpty()
 
-        val payload = SyncPayload(
-            user = user,
-            progress = progress,
-            achievements = achievements
+        val payload = SyncPayloadRemote(
+            user = user.toRemote(),
+            progress = progress.map { it.toRemote() },
+            achievements = achievements.map { it.toRemote() }
         )
 
         pendingSyncStore.enqueue(payload)
@@ -46,14 +48,21 @@ class SyncManager @Inject constructor(
         val queued = pendingSyncStore.getQueue().toMutableList()
         if (queued.isEmpty()) return
 
-        val remaining = mutableListOf<SyncPayload>()
+        val remaining = mutableListOf<SyncPayloadRemote>()
         for (item in queued) {
             val result = runCatching { apiService.sync(item) }
             if (result.isSuccess) {
                 result.getOrNull()?.let { response ->
-                    response.user?.let { repository.replaceUser(it) }
-                    response.progress?.let { repository.replaceProgress(item.user.userId, it) }
-                    response.achievements?.let { repository.replaceAchievements(item.user.userId, it) }
+                    response.user?.let { remoteUser ->
+                        val existing = repository.getUserByIdSync(remoteUser.userId)
+                        repository.replaceUser(remoteUser.toEntity(existing))
+                    }
+                    response.progress?.let { items ->
+                        repository.replaceProgress(item.user.userId, items.map { it.toEntity() })
+                    }
+                    response.achievements?.let { items ->
+                        repository.replaceAchievements(item.user.userId, items.map { it.toEntity() })
+                    }
                 }
             } else {
                 remaining.add(item)

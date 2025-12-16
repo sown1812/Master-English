@@ -1,6 +1,7 @@
 package com.example.server.routes
 
 import com.example.server.auth.ensureUser
+import com.example.server.dbQuery
 import com.example.server.model.UserDto
 import com.example.server.tables.Users
 import io.ktor.server.application.*
@@ -8,14 +9,13 @@ import io.ktor.server.request.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
-import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Route.userRoutes() {
     route("/users") {
         get("/{id}") {
             val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid user id")
             if (!call.ensureUser(id)) return@get
-            val user = transaction {
+            val user = dbQuery {
                 Users.selectAll().where { Users.userId eq id }.limit(1).firstOrNull()?.let {
                     UserDto(
                         userId = it[Users.userId],
@@ -47,7 +47,7 @@ fun Route.userRoutes() {
             val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid user id")
             if (!call.ensureUser(id)) return@put
             val body = call.receive<UserDto>()
-            transaction {
+            dbQuery {
                 Users.update({ Users.userId eq id }) {
                     it[email] = body.email
                     it[displayName] = body.displayName

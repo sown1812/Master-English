@@ -1,5 +1,6 @@
 package com.example.server.services
 
+import com.example.server.dbQuery
 import com.example.server.model.ProgressDto
 import com.example.server.model.SaveProgressRequest
 import com.example.server.tables.Lessons
@@ -12,25 +13,24 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
-import org.jetbrains.exposed.sql.transactions.transaction
 
 class ProgressService {
-    fun saveProgress(req: SaveProgressRequest): Result<Int> = transaction {
+    suspend fun saveProgress(req: SaveProgressRequest): Result<Int> = dbQuery {
         val errors = validate(req)
-        if (errors.isNotEmpty()) return@transaction Result.failure(IllegalArgumentException(errors.joinToString("; ")))
+        if (errors.isNotEmpty()) return@dbQuery Result.failure(IllegalArgumentException(errors.joinToString("; ")))
 
         val now = System.currentTimeMillis()
         val id = insertProgress(req, now)
         Result.success(id)
     }
 
-    fun getByUser(userId: String): List<ProgressDto> = transaction {
+    suspend fun getByUser(userId: String): List<ProgressDto> = dbQuery {
         UserProgress.selectAll().where { UserProgress.userId eq userId }
             .orderBy(UserProgress.updatedAt, SortOrder.DESC)
             .map { it.toProgressDto() }
     }
 
-    fun getByLesson(userId: String, lessonId: Int): List<ProgressDto> = transaction {
+    suspend fun getByLesson(userId: String, lessonId: Int): List<ProgressDto> = dbQuery {
         UserProgress.selectAll()
             .where { (UserProgress.lessonId eq lessonId) and (UserProgress.userId eq userId) }
             .orderBy(UserProgress.updatedAt, SortOrder.DESC)

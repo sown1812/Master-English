@@ -33,7 +33,7 @@ interface ApiService {
     suspend fun getLeaderboard(@Query("limit") limit: Int = 20): List<LeaderboardEntryRemote>
 
     @POST("/sync")
-    suspend fun sync(@Body payload: SyncPayload): SyncResponse
+    suspend fun sync(@Body payload: SyncPayloadRemote): SyncResponseRemote
 
     @GET("/lessons")
     suspend fun getLessons(): List<LessonRemote>

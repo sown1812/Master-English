@@ -1,19 +1,19 @@
 package com.example.server.routes
 
 import com.example.server.model.WordDto
+import com.example.server.dbQuery
 import com.example.server.tables.Words
 import io.ktor.server.application.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
 import org.jetbrains.exposed.sql.*
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
-import org.jetbrains.exposed.sql.transactions.transaction
 
 fun Route.wordRoutes() {
     route("/words") {
         get("/{id}") {
             val id = call.parameters["id"]?.toIntOrNull() ?: throw IllegalArgumentException("Invalid id")
-            val word = transaction {
+            val word = dbQuery {
                 Words.selectAll().where { Words.id eq id }.limit(1).firstOrNull()?.let {
                     WordDto(
                         id = it[Words.id],
@@ -42,7 +42,7 @@ fun Route.wordRoutes() {
     route("/lessons/{id}/words") {
         get {
             val lessonId = call.parameters["id"]?.toIntOrNull() ?: throw IllegalArgumentException("Invalid lesson id")
-            val words = transaction {
+            val words = dbQuery {
                 Words.selectAll().where { Words.lessonId eq lessonId }
                     .orderBy(Words.id to SortOrder.ASC)
                     .map {

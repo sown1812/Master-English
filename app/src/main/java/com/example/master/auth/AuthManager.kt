@@ -29,6 +29,9 @@ class AuthManager @Inject constructor(
     @ApplicationScope private val appScope: CoroutineScope
 ) {
     private val firebaseAuth: FirebaseAuth = authProvider.firebaseAuth
+
+    @Volatile
+    private var cachedIdToken: String? = null
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: Flow<AuthState> = _authState.asStateFlow()
@@ -48,6 +51,7 @@ class AuthManager @Inject constructor(
                 val localUser = ensureLocalUser(firebaseUser)
                 _currentUser.value = localUser
             }
+            appScope.launch { refreshTokenCache(forceRefresh = false) }
         } else {
             _authState.value = AuthState.Unauthenticated
         }
@@ -96,6 +100,7 @@ class AuthManager @Inject constructor(
 
     suspend fun signOut() {
         firebaseAuth.signOut()
+        cachedIdToken = null
         _currentUser.value = null
         _authState.value = AuthState.Unauthenticated
     }
@@ -148,8 +153,18 @@ class AuthManager @Inject constructor(
         return firebaseAuth.currentUser?.uid
     }
 
+    fun getCachedIdToken(): String? = cachedIdToken
+
     suspend fun getIdToken(forceRefresh: Boolean = false): String? {
-        return firebaseAuth.currentUser?.getIdToken(forceRefresh)?.await()?.token
+        return refreshTokenCache(forceRefresh)
+    }
+
+    private suspend fun refreshTokenCache(forceRefresh: Boolean): String? {
+        val token = runCatching {
+            firebaseAuth.currentUser?.getIdToken(forceRefresh)?.await()?.token
+        }.getOrNull()
+        cachedIdToken = token
+        return token
     }
     
     fun isAuthenticated(): Boolean {
@@ -201,6 +216,7 @@ class AuthManager @Inject constructor(
             )
             _currentUser.value = localUser
             _authState.value = AuthState.Authenticated(firebaseUser)
+            refreshTokenCache(forceRefresh = false)
             AuthResult.Success
         } else {
             _authState.value = AuthState.Unauthenticated
