@@ -2,6 +2,7 @@ package com.example.server
 
 import com.example.server.auth.configureFirebaseAuth
 import com.example.server.routes.exerciseRoutes
+import com.example.server.routes.healthRoutes
 import com.example.server.routes.lessonRoutes
 import com.example.server.routes.progressRoutes
 import com.example.server.routes.userRoutes
@@ -17,6 +18,8 @@ import io.ktor.server.auth.*
 import io.ktor.server.engine.*
 import io.ktor.server.netty.*
 import io.ktor.server.plugins.contentnegotiation.*
+import io.ktor.server.plugins.forwardedheaders.ForwardedHeaders
+import io.ktor.server.plugins.forwardedheaders.XForwardedHeaders
 import io.ktor.server.plugins.statuspages.*
 import io.ktor.server.response.*
 import io.ktor.server.routing.*
@@ -34,6 +37,8 @@ fun Application.module() {
                     is ContentTransformationException,
                     is SerializationException,
                     is IllegalArgumentException -> io.ktor.http.HttpStatusCode.BadRequest
+                    is PayloadTooLargeException -> io.ktor.http.HttpStatusCode.PayloadTooLarge
+                    is RateLimitExceededException -> io.ktor.http.HttpStatusCode.TooManyRequests
                     else -> io.ktor.http.HttpStatusCode.InternalServerError
                 }
                 if (status == io.ktor.http.HttpStatusCode.InternalServerError) {
@@ -44,10 +49,18 @@ fun Application.module() {
         }
     }
 
+    if (pluginOrNull(ForwardedHeaders) == null) {
+        install(ForwardedHeaders)
+    }
+    if (pluginOrNull(XForwardedHeaders) == null) {
+        install(XForwardedHeaders)
+    }
+
+    configureRequestLimits()
     configureFirebaseAuth()
 
     routing {
-        get("/health") { call.respond(mapOf("status" to "ok")) }
+        healthRoutes()
         lessonRoutes()
         wordRoutes()
         exerciseRoutes()

@@ -3,11 +3,14 @@ package com.example.master.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.master.auth.AuthManager
+import com.example.master.data.local.NotificationSettingsStore
 import com.example.master.sync.OfflineManager
+import com.example.master.notifications.ReminderScheduler
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -28,14 +31,37 @@ data class SettingsUiState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authManager: AuthManager,
-    private val offlineManager: OfflineManager
+    private val offlineManager: OfflineManager,
+    private val notificationSettingsStore: NotificationSettingsStore,
+    private val reminderScheduler: ReminderScheduler
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SettingsUiState())
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
+    init {
+        viewModelScope.launch {
+            notificationSettingsStore.settings.collect { settings ->
+                _uiState.update {
+                    it.copy(
+                        notificationsEnabled = settings.notificationsEnabled,
+                        reminderEnabled = settings.reminderEnabled,
+                        reminderTime = settings.reminderTime
+                    )
+                }
+                reminderScheduler.updateSchedule(
+                    settings.notificationsEnabled,
+                    settings.reminderEnabled,
+                    settings.reminderTime
+                )
+            }
+        }
+    }
+
     fun toggleNotifications(enabled: Boolean) {
-        _uiState.update { it.copy(notificationsEnabled = enabled) }
+        viewModelScope.launch {
+            notificationSettingsStore.setNotificationsEnabled(enabled)
+        }
     }
 
     fun toggleSound(enabled: Boolean) {
@@ -51,11 +77,15 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun toggleReminder(enabled: Boolean) {
-        _uiState.update { it.copy(reminderEnabled = enabled) }
+        viewModelScope.launch {
+            notificationSettingsStore.setReminderEnabled(enabled)
+        }
     }
 
     fun updateReminderTime(time: String) {
-        _uiState.update { it.copy(reminderTime = time) }
+        viewModelScope.launch {
+            notificationSettingsStore.setReminderTime(time)
+        }
     }
 
     fun prefetchOfflineContent() {

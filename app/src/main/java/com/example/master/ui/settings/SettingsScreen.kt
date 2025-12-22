@@ -1,5 +1,11 @@
 package com.example.master.ui.settings
 
+import android.Manifest
+import android.app.TimePickerDialog
+import android.content.pm.PackageManager
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -31,8 +37,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.content.ContextCompat
+import java.util.Locale
 
 @Composable
 fun SettingsScreen(
@@ -40,6 +49,14 @@ fun SettingsScreen(
     onLoggedOut: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            viewModel.toggleNotifications(true)
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -53,7 +70,26 @@ fun SettingsScreen(
             title = "Thông báo",
             description = "Nhận nhắc nhở học và streak",
             checked = state.notificationsEnabled,
-            onCheckedChange = { viewModel.toggleNotifications(it) }
+            onCheckedChange = { enabled ->
+                if (!enabled) {
+                    viewModel.toggleNotifications(false)
+                    return@SettingToggle
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    val permission = Manifest.permission.POST_NOTIFICATIONS
+                    val granted = ContextCompat.checkSelfPermission(
+                        context,
+                        permission
+                    ) == PackageManager.PERMISSION_GRANTED
+                    if (granted) {
+                        viewModel.toggleNotifications(true)
+                    } else {
+                        permissionLauncher.launch(permission)
+                    }
+                } else {
+                    viewModel.toggleNotifications(true)
+                }
+            }
         )
 
         SettingToggle(
@@ -193,6 +229,7 @@ private fun ReminderCard(
     onToggle: (Boolean) -> Unit,
     onTimeChange: (String) -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -220,7 +257,18 @@ private fun ReminderCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Giờ nhắc: $time", style = MaterialTheme.typography.bodyMedium)
                     Button(
-                        onClick = { onTimeChange(time) },
+                        onClick = {
+                            val (hour, minute) = parseTime(time)
+                            TimePickerDialog(
+                                context,
+                                { _, selectedHour, selectedMinute ->
+                                    onTimeChange(formatTime(selectedHour, selectedMinute))
+                                },
+                                hour,
+                                minute,
+                                true
+                            ).show()
+                        },
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9))
                     ) {
                         Text("Đổi giờ", color = Color.White)
@@ -229,4 +277,15 @@ private fun ReminderCard(
             }
         }
     }
+}
+
+private fun parseTime(time: String): Pair<Int, Int> {
+    val parts = time.split(":")
+    val hour = parts.getOrNull(0)?.toIntOrNull() ?: 20
+    val minute = parts.getOrNull(1)?.toIntOrNull() ?: 0
+    return hour to minute
+}
+
+private fun formatTime(hour: Int, minute: Int): String {
+    return String.format(Locale.US, "%02d:%02d", hour, minute)
 }

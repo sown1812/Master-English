@@ -7,11 +7,13 @@ import com.example.master.auth.di.FirebaseAuthProvider
 import com.example.master.core.network.NetworkMonitor
 import com.example.master.data.local.AppDatabase
 import com.example.master.data.local.GameStateStore
+import com.example.master.data.local.NotificationSettingsStore
 import com.example.master.data.local.PendingSyncStore
 import com.example.master.data.repository.LearningRepository
 import com.example.master.di.ApplicationScope
 import com.example.master.network.ApiService
 import com.example.master.network.NetworkModule
+import com.example.master.notifications.ReminderScheduler
 import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
@@ -60,6 +62,18 @@ object AppModule {
         @ApplicationContext context: Context,
         gson: Gson
     ): PendingSyncStore = PendingSyncStore(context, gson)
+
+    @Provides
+    @Singleton
+    fun provideNotificationSettingsStore(
+        @ApplicationContext context: Context
+    ): NotificationSettingsStore = NotificationSettingsStore(context)
+
+    @Provides
+    @Singleton
+    fun provideReminderScheduler(
+        @ApplicationContext context: Context
+    ): ReminderScheduler = ReminderScheduler(context)
 
     @Provides
     @Singleton
