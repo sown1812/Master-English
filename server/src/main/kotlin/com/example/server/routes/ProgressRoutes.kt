@@ -16,6 +16,13 @@ fun Route.progressRoutes() {
         post {
             val req = call.receive<SaveProgressRequest>()
             if (!call.ensureUser(req.userId)) return@post
+            if (req.wordId == null) {
+                call.respond(
+                    HttpStatusCode.BadRequest,
+                    mapOf("error" to "Lesson progress is server-managed. Use /sync for lesson completion.")
+                )
+                return@post
+            }
             val result = service.saveProgress(req)
             result.fold(
                 onSuccess = { id -> call.respond(mapOf("id" to id)) },

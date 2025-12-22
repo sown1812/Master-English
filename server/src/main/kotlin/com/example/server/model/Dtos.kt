@@ -74,6 +74,12 @@ data class UserDto(
 )
 
 @Serializable
+data class UpdateUserProfileRequest(
+    val displayName: String? = null,
+    val avatarUrl: String? = null
+)
+
+@Serializable
 data class SaveProgressRequest(
     val userId: String,
     val lessonId: Int,
@@ -194,8 +200,33 @@ data class SyncPayload(
 )
 
 @Serializable
+data class LessonCompletedEvent(
+    val eventId: String,
+    val occurredAt: Long,
+    val lessonId: Int,
+    val score: Int,
+    val correctAnswers: Int,
+    val wrongAnswers: Int,
+    val timeSpent: Long = 0
+)
+
+@Serializable
+data class SyncEventsPayload(
+    val userId: String,
+    val lessonCompletions: List<LessonCompletedEvent> = emptyList()
+)
+
+@Serializable
+data class SyncEventResult(
+    val eventId: String,
+    val status: String,
+    val error: String? = null
+)
+
+@Serializable
 data class SyncResponse(
     val user: UserDto? = null,
     val progress: List<ProgressDto>? = null,
-    val achievements: List<AchievementDto>? = null
+    val achievements: List<AchievementDto>? = null,
+    val results: List<SyncEventResult>? = null
 )

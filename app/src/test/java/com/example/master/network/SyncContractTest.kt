@@ -13,7 +13,7 @@ class SyncContractTest {
     private val gson = Gson()
 
     @Test
-    fun `sync payload uses server field names and excludes local-only user fields`() {
+    fun `user remote uses server field names and excludes local-only user fields`() {
         val user = UserEntity(
             userId = "u1",
             email = "u1@example.com",
@@ -31,18 +31,37 @@ class SyncContractTest {
             lastSyncedAt = 333L
         )
 
-        val payload = SyncPayloadRemote(
-            user = user.toRemote(),
-            progress = emptyList(),
-            achievements = emptyList()
-        )
-
-        val json = gson.toJson(payload)
+        val json = gson.toJson(user.toRemote())
         assertTrue(json.contains("\"totalXp\":123"))
         assertFalse(json.contains("\"totalXP\""))
         assertFalse(json.contains("\"createdAt\""))
         assertFalse(json.contains("\"updatedAt\""))
         assertFalse(json.contains("\"lastSyncedAt\""))
+    }
+
+    @Test
+    fun `sync event payload does not embed user snapshot`() {
+        val payload = SyncEventsPayloadRemote(
+            userId = "u1",
+            lessonCompletions = listOf(
+                LessonCompletedEventRemote(
+                    eventId = "e1",
+                    occurredAt = 1L,
+                    lessonId = 1,
+                    score = 10,
+                    correctAnswers = 8,
+                    wrongAnswers = 2,
+                    timeSpent = 123L
+                )
+            )
+        )
+
+        val json = gson.toJson(payload)
+        assertTrue(json.contains("\"userId\":\"u1\""))
+        assertTrue(json.contains("\"lessonCompletions\""))
+        assertFalse(json.contains("\"user\""))
+        assertFalse(json.contains("\"progress\""))
+        assertFalse(json.contains("\"achievements\""))
     }
 
     @Test
@@ -76,4 +95,3 @@ class SyncContractTest {
         assertEquals(0.85f, roundTrip.accuracy, 0.0001f)
     }
 }
-

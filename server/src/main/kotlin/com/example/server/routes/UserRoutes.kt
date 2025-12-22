@@ -2,6 +2,7 @@ package com.example.server.routes
 
 import com.example.server.auth.ensureUser
 import com.example.server.dbQuery
+import com.example.server.model.UpdateUserProfileRequest
 import com.example.server.model.UserDto
 import com.example.server.tables.Users
 import io.ktor.server.application.*
@@ -46,27 +47,37 @@ fun Route.userRoutes() {
         put("/{id}") {
             val id = call.parameters["id"] ?: throw IllegalArgumentException("Invalid user id")
             if (!call.ensureUser(id)) return@put
-            val body = call.receive<UserDto>()
-            dbQuery {
+            val body = call.receive<UpdateUserProfileRequest>()
+
+            val displayName = body.displayName?.trim()?.takeIf { it.isNotBlank() }
+            val avatarUrl = body.avatarUrl?.trim()?.takeIf { it.isNotBlank() }
+            if (displayName == null && body.avatarUrl == null) {
+                call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to "No profile fields to update"))
+                return@put
+            }
+            if (displayName != null && displayName.length > 50) {
+                call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to "displayName too long"))
+                return@put
+            }
+            if (body.avatarUrl != null && avatarUrl != null && avatarUrl.length > 2048) {
+                call.respond(io.ktor.http.HttpStatusCode.BadRequest, mapOf("error" to "avatarUrl too long"))
+                return@put
+            }
+
+            val now = System.currentTimeMillis()
+            val updated = dbQuery {
                 Users.update({ Users.userId eq id }) {
-                    it[email] = body.email
-                    it[displayName] = body.displayName
-                    it[avatarUrl] = body.avatarUrl
-                    it[currentLevel] = body.currentLevel
-                    it[totalXp] = body.totalXp
-                    it[coins] = body.coins
-                    it[streakDays] = body.streakDays
-                    it[lastStudyDate] = body.lastStudyDate
-                    it[longestStreak] = body.longestStreak
-                    it[wordsLearned] = body.wordsLearned
-                    it[lessonsCompleted] = body.lessonsCompleted
-                    it[exercisesCompleted] = body.exercisesCompleted
-                    it[isPremium] = body.isPremium
-                    it[premiumExpiryDate] = body.premiumExpiryDate
-                    it[updatedAt] = System.currentTimeMillis()
+                    if (displayName != null) it[Users.displayName] = displayName
+                    if (body.avatarUrl != null) it[Users.avatarUrl] = avatarUrl
+                    it[Users.updatedAt] = now
+                    it[Users.lastSyncedAt] = now
                 }
             }
-            call.respond(mapOf("status" to "updated"))
+            if (updated == 0) {
+                call.respond(io.ktor.http.HttpStatusCode.NotFound, mapOf("error" to "User not found"))
+            } else {
+                call.respond(mapOf("status" to "updated"))
+            }
         }
     }
 }

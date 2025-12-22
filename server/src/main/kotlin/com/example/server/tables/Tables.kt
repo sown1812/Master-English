@@ -149,3 +149,13 @@ object DailyChallenges : Table("daily_challenges") {
     val updatedAt = long("updated_at")
     override val primaryKey = PrimaryKey(id)
 }
+
+object SyncEvents : Table("sync_events") {
+    val id = integer("id").autoIncrement()
+    val userId = reference("user_id", Users.userId)
+    val eventId = text("event_id")
+    val eventType = text("event_type")
+    val occurredAt = long("occurred_at")
+    val processedAt = long("processed_at")
+    override val primaryKey = PrimaryKey(id)
+}

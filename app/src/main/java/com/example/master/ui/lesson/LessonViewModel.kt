@@ -418,7 +418,12 @@ class LessonViewModel @Inject constructor(
                 )
                 repository.saveProgress(progress)
                 runCatching {
-                    syncManager.enqueueLatestState()
+                    syncManager.enqueueLessonCompleted(
+                        lessonId = lessonId,
+                        score = state.score,
+                        correctAnswers = state.correctAnswers,
+                        wrongAnswers = state.wrongAnswers
+                    )
                     syncManager.flushQueue()
                 }
             }

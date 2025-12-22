@@ -4,10 +4,19 @@ import com.example.master.data.local.entity.AchievementEntity
 import com.example.master.data.local.entity.UserEntity
 import com.example.master.data.local.entity.UserProgressEntity
 
-data class SyncPayloadRemote(
-    val user: UserRemote,
-    val progress: List<ProgressRemote>,
-    val achievements: List<AchievementRemote>
+data class SyncEventsPayloadRemote(
+    val userId: String,
+    val lessonCompletions: List<LessonCompletedEventRemote> = emptyList()
+)
+
+data class LessonCompletedEventRemote(
+    val eventId: String,
+    val occurredAt: Long,
+    val lessonId: Int,
+    val score: Int,
+    val correctAnswers: Int,
+    val wrongAnswers: Int,
+    val timeSpent: Long = 0
 )
 
 data class SyncResponseRemote(

@@ -10,17 +10,29 @@ import com.example.server.tables.Words
 import org.jetbrains.exposed.sql.SortOrder
 import org.jetbrains.exposed.sql.ResultRow
 import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.isNull
 import org.jetbrains.exposed.sql.and
 import org.jetbrains.exposed.sql.insert
 import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.update
 
 class ProgressService {
     suspend fun saveProgress(req: SaveProgressRequest): Result<Int> = dbQuery {
-        val errors = validate(req)
+        val sanitized =
+            if (req.wordId != null) {
+                req.copy(
+                    xpEarned = 0,
+                    coinsEarned = 0
+                )
+            } else {
+                req
+            }
+
+        val errors = validate(sanitized)
         if (errors.isNotEmpty()) return@dbQuery Result.failure(IllegalArgumentException(errors.joinToString("; ")))
 
         val now = System.currentTimeMillis()
-        val id = insertProgress(req, now)
+        val id = upsertProgress(sanitized, now)
         Result.success(id)
     }
 
@@ -70,13 +82,62 @@ class ProgressService {
     }
 }
 
-private fun insertProgress(req: SaveProgressRequest, now: Long): Int =
-    UserProgress.insert { row ->
-        row[userId] = req.userId
-        row[lessonId] = req.lessonId
-        row[wordId] = req.wordId
-        row[isCompleted] = req.isCompleted
-        row[completedAt] = if (req.isCompleted) now else null
+private fun upsertProgress(req: SaveProgressRequest, now: Long): Int {
+    val wordCondition =
+        if (req.wordId == null) {
+            UserProgress.wordId.isNull()
+        } else {
+            UserProgress.wordId eq req.wordId
+        }
+
+    val existing = UserProgress
+        .selectAll()
+        .where {
+            (UserProgress.userId eq req.userId) and
+                (UserProgress.lessonId eq req.lessonId) and
+                wordCondition
+        }
+        .limit(1)
+        .firstOrNull()
+
+    if (existing == null) {
+        return UserProgress.insert { row ->
+            row[userId] = req.userId
+            row[lessonId] = req.lessonId
+            row[wordId] = req.wordId
+            row[isCompleted] = req.isCompleted
+            row[completedAt] = if (req.isCompleted) now else null
+            row[score] = req.score
+            row[accuracy] = req.accuracy
+            row[timeSpent] = req.timeSpent
+            row[attempts] = req.attempts
+            row[correctAnswers] = req.correctAnswers
+            row[wrongAnswers] = req.wrongAnswers
+            row[xpEarned] = req.xpEarned
+            row[coinsEarned] = req.coinsEarned
+            row[lastReviewDate] = now
+            row[nextReviewDate] = null
+            row[reviewCount] = req.reviewCount
+            row[easeFactor] = req.easeFactor
+            row[createdAt] = now
+            row[updatedAt] = now
+        }[UserProgress.id]
+    }
+
+    val id = existing[UserProgress.id]
+    val wasCompleted = existing[UserProgress.isCompleted]
+    val completedAt = existing[UserProgress.completedAt]
+
+    val isCompleted = wasCompleted || req.isCompleted
+    val newCompletedAt = when {
+        wasCompleted -> completedAt
+        req.isCompleted -> now
+        else -> null
+    }
+
+    UserProgress.update({ UserProgress.id eq id }) { row ->
+        row[UserProgress.isCompleted] = isCompleted
+        row[UserProgress.completedAt] = newCompletedAt
         row[score] = req.score
         row[accuracy] = req.accuracy
         row[timeSpent] = req.timeSpent
@@ -89,9 +150,11 @@ private fun insertProgress(req: SaveProgressRequest, now: Long): Int =
         row[nextReviewDate] = null
         row[reviewCount] = req.reviewCount
         row[easeFactor] = req.easeFactor
-        row[createdAt] = now
         row[updatedAt] = now
-    }[UserProgress.id]
+    }
+
+    return id
+}
 
 private fun ResultRow.toProgressDto() = ProgressDto(
     id = this[UserProgress.id],

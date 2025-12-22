@@ -4,12 +4,12 @@ import com.example.master.auth.AuthManager
 import com.example.master.data.local.PendingSyncStore
 import com.example.master.data.repository.LearningRepository
 import com.example.master.network.ApiService
-import com.example.master.network.SyncPayloadRemote
+import com.example.master.network.LessonCompletedEventRemote
+import com.example.master.network.SyncEventsPayloadRemote
 import com.example.master.network.toEntity
-import com.example.master.network.toRemote
+import java.util.UUID
 import javax.inject.Inject
 import javax.inject.Singleton
-import kotlinx.coroutines.flow.firstOrNull
 
 @Singleton
 class SyncManager @Inject constructor(
@@ -19,50 +19,47 @@ class SyncManager @Inject constructor(
     private val pendingSyncStore: PendingSyncStore
 ) {
     suspend fun syncNow() {
-        enqueueLatestState()
         flushQueue()
     }
 
-    /**
-     * Lưu snapshot hiện tại (user + progress + achievements) vào hàng đợi để đồng bộ khi có mạng.
-     */
-    suspend fun enqueueLatestState() {
+    suspend fun enqueueLessonCompleted(
+        lessonId: Int,
+        score: Int,
+        correctAnswers: Int,
+        wrongAnswers: Int,
+        timeSpent: Long = 0
+    ) {
         val userId = authManager.getCurrentUserId() ?: return
-        val user = repository.getUserByIdSync(userId) ?: return
-        val progress = repository.getUserProgress(userId).firstOrNull().orEmpty()
-        val achievements = repository.getUserAchievements(userId).firstOrNull().orEmpty()
-
-        val payload = SyncPayloadRemote(
-            user = user.toRemote(),
-            progress = progress.map { it.toRemote() },
-            achievements = achievements.map { it.toRemote() }
+        val event = LessonCompletedEventRemote(
+            eventId = UUID.randomUUID().toString(),
+            occurredAt = System.currentTimeMillis(),
+            lessonId = lessonId,
+            score = score,
+            correctAnswers = correctAnswers,
+            wrongAnswers = wrongAnswers,
+            timeSpent = timeSpent
         )
-
-        pendingSyncStore.enqueue(payload)
+        pendingSyncStore.enqueue(
+            SyncEventsPayloadRemote(
+                userId = userId,
+                lessonCompletions = listOf(event)
+            )
+        )
     }
 
-    /**
-     * Đẩy toàn bộ queue lên server, giữ lại các mục lỗi để thử lại lần sau.
-     */
     suspend fun flushQueue() {
         val queued = pendingSyncStore.getQueue().toMutableList()
-        if (queued.isEmpty()) return
+        if (queued.isEmpty()) {
+            pullSnapshot()
+            return
+        }
 
-        val remaining = mutableListOf<SyncPayloadRemote>()
+        val remaining = mutableListOf<SyncEventsPayloadRemote>()
         for (item in queued) {
             val result = runCatching { apiService.sync(item) }
             if (result.isSuccess) {
                 result.getOrNull()?.let { response ->
-                    response.user?.let { remoteUser ->
-                        val existing = repository.getUserByIdSync(remoteUser.userId)
-                        repository.replaceUser(remoteUser.toEntity(existing))
-                    }
-                    response.progress?.let { items ->
-                        repository.replaceProgress(item.user.userId, items.map { it.toEntity() })
-                    }
-                    response.achievements?.let { items ->
-                        repository.replaceAchievements(item.user.userId, items.map { it.toEntity() })
-                    }
+                    applyResponse(item.userId, response)
                 }
             } else {
                 remaining.add(item)
@@ -73,6 +70,25 @@ class SyncManager @Inject constructor(
             pendingSyncStore.clear()
         } else {
             pendingSyncStore.saveQueue(remaining)
+        }
+    }
+
+    private suspend fun pullSnapshot() {
+        val userId = authManager.getCurrentUserId() ?: return
+        runCatching { apiService.sync(SyncEventsPayloadRemote(userId = userId)) }
+            .onSuccess { response -> applyResponse(userId, response) }
+    }
+
+    private suspend fun applyResponse(userId: String, response: com.example.master.network.SyncResponseRemote) {
+        response.user?.let { remoteUser ->
+            val existing = repository.getUserByIdSync(remoteUser.userId)
+            repository.replaceUser(remoteUser.toEntity(existing))
+        }
+        response.progress?.let { items ->
+            repository.replaceProgress(userId, items.map { it.toEntity() })
+        }
+        response.achievements?.let { items ->
+            repository.replaceAchievements(userId, items.map { it.toEntity() })
         }
     }
 }

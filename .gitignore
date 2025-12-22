@@ -9,6 +9,8 @@
 /.idea/assetWizardSettings.xml
 .DS_Store
 /build
+# Gradle module outputs
+**/build/
 /captures
 .externalNativeBuild
 .cxx
