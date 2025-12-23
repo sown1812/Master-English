@@ -1,4 +1,4 @@
-package com.example.master.auth
+﻿package com.example.master.auth
 
 import com.example.master.core.user.UserProfile
 import com.example.master.data.local.entity.UserEntity
@@ -32,6 +32,22 @@ class AuthManager @Inject constructor(
 
     @Volatile
     private var cachedIdToken: String? = null
+
+    private val authListener = FirebaseAuth.AuthStateListener { fa ->
+        val user = fa.currentUser
+        if (user != null) {
+            _authState.value = AuthState.Authenticated(user)
+            appScope.launch {
+                val localUser = ensureLocalUser(user)
+                _currentUser.value = localUser
+                refreshTokenCache(forceRefresh = false)
+            }
+        } else {
+            cachedIdToken = null
+            _currentUser.value = null
+            _authState.value = AuthState.Unauthenticated
+        }
+    }
     
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: Flow<AuthState> = _authState.asStateFlow()
@@ -41,6 +57,7 @@ class AuthManager @Inject constructor(
     
     init {
         checkAuthStatus()
+        firebaseAuth.addAuthStateListener(authListener)
     }
     
     private fun checkAuthStatus() {
@@ -56,6 +73,26 @@ class AuthManager @Inject constructor(
             _authState.value = AuthState.Unauthenticated
         }
     }
+
+    suspend fun signInAnonymously(): AuthResult {
+        return try {
+            _authState.value = AuthState.Loading
+            val result = firebaseAuth.signInAnonymously().await().user
+            if (result != null) {
+                val localUser = ensureLocalUser(result, initializeAchievementsIfNew = false)
+                _currentUser.value = localUser
+                _authState.value = AuthState.Authenticated(result)
+                refreshTokenCache(forceRefresh = false)
+                AuthResult.Success
+            } else {
+                _authState.value = AuthState.Unauthenticated
+                AuthResult.Error("Anonymous sign-in failed")
+            }
+        } catch (e: Exception) {
+            _authState.value = AuthState.Unauthenticated
+            AuthResult.Error(e.message ?: "Anonymous sign-in failed")
+        }
+    }
     
     suspend fun signIn(email: String, password: String): AuthResult {
         return authFlow(
@@ -69,7 +106,7 @@ class AuthManager @Inject constructor(
     suspend fun signInWithGoogle(idToken: String): AuthResult {
         return authFlow(
             errorIfNull = "Google sign-in failed",
-            initializeAchievementsIfNew = false
+            initializeAchievementsIfNew = true
         ) {
             val credential = GoogleAuthProvider.getCredential(idToken, null)
             firebaseAuth.signInWithCredential(credential).await().user
@@ -99,11 +136,15 @@ class AuthManager @Inject constructor(
     }
 
     suspend fun signOut() {
+        firebaseAuth.removeAuthStateListener(authListener)
         firebaseAuth.signOut()
         cachedIdToken = null
         _currentUser.value = null
         _authState.value = AuthState.Unauthenticated
+        firebaseAuth.addAuthStateListener(authListener)
     }
+
+    fun isAnonymous(): Boolean = firebaseAuth.currentUser?.isAnonymous == true
     
     suspend fun resetPassword(email: String): AuthResult {
         return try {
@@ -121,7 +162,7 @@ class AuthManager @Inject constructor(
         val user = UserEntity(
             userId = firebaseUser.uid,
             email = firebaseUser.email ?: "",
-            displayName = displayName ?: firebaseUser.displayName ?: "User",
+            displayName = displayName ?: firebaseUser.displayName ?: "Guest",
             avatarUrl = firebaseUser.photoUrl?.toString(),
             currentLevel = 1,
             totalXP = 0,

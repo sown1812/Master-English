@@ -1,4 +1,4 @@
-package com.example.master.ui.practice
+﻿package com.example.master.ui.practice
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -19,6 +18,7 @@ import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Headset
 import androidx.compose.material.icons.filled.Map
+import androidx.compose.material.icons.filled.TextFields
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -43,7 +43,8 @@ fun PracticeScreen(
     onOpenFlashcards: (Int) -> Unit,
     onOpenLeaderboard: () -> Unit,
     onOpenShop: () -> Unit,
-    onOpenMistakes: () -> Unit
+    onOpenMistakes: () -> Unit,
+    onOpenWordle: () -> Unit
 ) {
     val state by viewModel.uiState.collectAsState()
 
@@ -70,7 +71,7 @@ fun PracticeScreen(
         QuickGrid(
             items = buildList {
                 val flashcardLesson = state.recommendedLessons.firstOrNull()?.id ?: 1
-                add(PracticeItem("Ấn flashcard", "Ghi nhớ từ vựng", Icons.Filled.FlashOn) { onOpenFlashcards(flashcardLesson) })
+                add(PracticeItem("Ôn flashcard", "Ghi nhớ từ vựng", Icons.Filled.FlashOn) { onOpenFlashcards(flashcardLesson) })
 
                 state.recommendedLessons.getOrNull(0)?.let { lesson ->
                     add(PracticeItem("Nghe - Chọn", lesson.title, Icons.Filled.Headset) { onStartLesson(lesson.id) })
@@ -80,6 +81,7 @@ fun PracticeScreen(
                 }
                 add(PracticeItem("Ôn lỗi sai", "Xem lại các câu sai", Icons.Filled.AutoAwesome, onOpenMistakes))
                 add(PracticeItem("Lộ trình", "Tiếp tục level", Icons.Filled.Map, onOpenLeaderboard))
+                add(PracticeItem("Wordle Từ vựng", "Đoán từ theo Wordle", Icons.Filled.TextFields, onOpenWordle))
             }
         )
 

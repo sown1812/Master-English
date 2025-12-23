@@ -83,7 +83,8 @@ fun HomeRoute(homeViewModel: HomeViewModel) {
         onOpenStore = { homeViewModel.onStoreClicked() },
         onQuestClick = { homeViewModel.onQuestSelected(it) },
         onBoosterClick = { homeViewModel.onBoosterSelected(it) },
-        onThemeClick = { homeViewModel.onThemeSelected(it) }
+        onThemeClick = { homeViewModel.onThemeSelected(it) },
+        onLessonClick = { homeViewModel.onLessonSelected(it) }
     )
 }
 
@@ -98,7 +99,8 @@ fun HomeScreen(
     onOpenStore: () -> Unit = {},
     onQuestClick: (Quest) -> Unit = {},
     onBoosterClick: (BoosterItem) -> Unit = {},
-    onThemeClick: (ThemeOption) -> Unit = {}
+    onThemeClick: (ThemeOption) -> Unit = {},
+    onLessonClick: (Int) -> Unit = {}
 ) {
     Box(
         modifier = modifier
@@ -131,6 +133,10 @@ fun HomeScreen(
                 maxLevel = state.maxLevel,
                 onFlashcardClick = onFlashcardClick,
                 onPlayClick = onPlayClick
+            )
+            LearningPathSection(
+                lessons = state.learningPath,
+                onLessonClick = onLessonClick
             )
             DailyChallengeCard(
                 challenge = state.dailyChallenge,
@@ -358,6 +364,117 @@ private fun HeroCard(
                     .offset(x = 20.dp, y = (-30).dp)
             )
         }
+    }
+}
+
+@Composable
+private fun LearningPathSection(
+    lessons: List<LearningPathLesson>,
+    onLessonClick: (Int) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text(
+            text = "Lộ trình học",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = Color(0xFF442C66)
+        )
+        if (lessons.isEmpty()) {
+            Text(
+                text = "Chưa có bài học. Vui lòng đồng bộ nội dung.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF7D63A4)
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                lessons.take(6).forEach { lesson ->
+                    LearningPathCard(lesson = lesson, onClick = { onLessonClick(lesson.id) })
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun LearningPathCard(
+    lesson: LearningPathLesson,
+    onClick: () -> Unit
+) {
+    val isLocked = !lesson.isUnlocked
+    val cardColor = if (isLocked) Color(0xFFF1F5F9) else Color(0xFFFDF2FF)
+    val tagColor = when (lesson.difficulty.uppercase()) {
+        "HARD" -> Color(0xFFEF4444)
+        "MEDIUM" -> Color(0xFFF59E0B)
+        else -> Color(0xFF10B981)
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = cardColor)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(enabled = !isLocked) { onClick() }
+                .padding(horizontal = 18.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = lesson.title,
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Color(0xFF1F2937),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = lesson.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF6B7280),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    DifficultyPill(text = lesson.difficulty, color = tagColor)
+                    Text(
+                        text = "${lesson.totalWords} từ • ${lesson.totalExercises} bài",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color(0xFF6B7280)
+                    )
+                }
+            }
+            if (isLocked) {
+                Icon(
+                    imageVector = Icons.Filled.Lock,
+                    contentDescription = null,
+                    tint = Color(0xFF94A3B8),
+                    modifier = Modifier.size(22.dp)
+                )
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.PlayArrow,
+                    contentDescription = null,
+                    tint = Color(0xFF7C3AED),
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DifficultyPill(text: String, color: Color) {
+    Surface(shape = RoundedCornerShape(50), color = color.copy(alpha = 0.15f)) {
+        Text(
+            text = text,
+            color = color,
+            style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
     }
 }
 @Composable

@@ -148,6 +148,35 @@ class AuthViewModel @Inject constructor(
         }
     }
 
+    fun signInAnonymously() {
+        viewModelScope.launch {
+            updateUiState {
+                it.copy(
+                    isLoading = true,
+                    errorMessage = null,
+                    loginInProgress = AuthFlow.ANONYMOUS
+                )
+            }
+
+            when (val result = authManager.signInAnonymously()) {
+                is AuthResult.Success -> {
+                    updateUiState {
+                        it.copy(isLoading = false, loginInProgress = AuthFlow.NONE)
+                    }
+                }
+                is AuthResult.Error -> {
+                    updateUiState {
+                        it.copy(
+                            isLoading = false,
+                            errorMessage = result.message,
+                            loginInProgress = AuthFlow.NONE
+                        )
+                    }
+                }
+            }
+        }
+    }
+    
     fun signInWithGoogle(idToken: String) {
         viewModelScope.launch {
             updateUiState {
@@ -270,5 +299,6 @@ data class AuthUiState(
 enum class AuthFlow {
     NONE,
     EMAIL,
-    GOOGLE
+    GOOGLE,
+    ANONYMOUS
 }

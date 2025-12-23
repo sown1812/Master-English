@@ -1,4 +1,4 @@
-package com.example.master.ui.store
+﻿package com.example.master.ui.store
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

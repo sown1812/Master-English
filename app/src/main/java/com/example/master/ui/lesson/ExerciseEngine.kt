@@ -46,12 +46,13 @@ class ExerciseEngine {
                 ignoreCase = true
             )
             is Exercise.Flashcard -> exercise.isRemembered == true
+            is Exercise.SpeedMatching -> !exercise.isExpired && exercise.matchedIds.size == exercise.pairs.size
         }
         
-        val feedback = if (isCorrect) {
-            POSITIVE_FEEDBACK.random()
-        } else {
-            ENCOURAGEMENT_FEEDBACK.random()
+        val feedback = when {
+            exercise is Exercise.SpeedMatching && exercise.isExpired -> "Hết giờ, thử lại nhé!"
+            isCorrect -> POSITIVE_FEEDBACK.random()
+            else -> ENCOURAGEMENT_FEEDBACK.random()
         }
         
         val word = exercise.word
@@ -65,10 +66,12 @@ class ExerciseEngine {
         
         val scoreDelta = when (exercise) {
             is Exercise.Flashcard -> if (isCorrect) 10 else 0
+            is Exercise.SpeedMatching -> if (isCorrect) exercise.scoreEarned else 0
             else -> if (isCorrect) 15 else 0
         }
         val heartsDelta = when (exercise) {
             is Exercise.Flashcard -> 0
+            is Exercise.SpeedMatching -> if (isCorrect) 0 else -1
             else -> if (isCorrect) 0 else -1
         }
         

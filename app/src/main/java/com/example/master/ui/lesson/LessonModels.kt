@@ -118,6 +118,25 @@ sealed class Exercise {
         val isFlipped: Boolean = false,
         val isRemembered: Boolean? = null
     ) : Exercise()
+
+    data class SpeedMatching(
+        override val id: Int,
+        override val question: String,
+        override val correctAnswer: String,
+        override val word: WordEntity?,
+        override val explanation: String?,
+        val pairs: List<SpeedMatchPair>,
+        val wordOrder: List<String> = emptyList(),
+        val matchedIds: Set<String> = emptySet(),
+        val selectedClueId: String? = null,
+        val selectedWordId: String? = null,
+        val combo: Int = 0,
+        val bestCombo: Int = 0,
+        val scoreEarned: Int = 0,
+        val timeLeftSec: Int = 45,
+        val timeLimitSec: Int = 45,
+        val isExpired: Boolean = false
+    ) : Exercise()
 }
 
 data class MatchPair(
@@ -131,6 +150,13 @@ data class PictureOption(
     val imageUrl: String?
 )
 
+data class SpeedMatchPair(
+    val id: String,
+    val word: String,
+    val clue: String,
+    val imageUrl: String? = null
+)
+
 sealed class LessonEvent {
     data class AnswerSelected(val answer: String) : LessonEvent()
     data class FillBlankAnswered(val answer: String) : LessonEvent()
@@ -139,6 +165,9 @@ sealed class LessonEvent {
     data class SpeakingAnswerCaptured(val transcript: String) : LessonEvent()
     data class FlashcardFlipped(val flipped: Boolean) : LessonEvent()
     data class FlashcardRated(val remembered: Boolean) : LessonEvent()
+    data class SpeedMatchClueSelected(val clueId: String) : LessonEvent()
+    data class SpeedMatchWordSelected(val wordId: String) : LessonEvent()
+    object SpeedMatchTick : LessonEvent()
     object SubmitAnswer : LessonEvent()
     object NextExercise : LessonEvent()
     object ShowHint : LessonEvent()

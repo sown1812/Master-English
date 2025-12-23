@@ -19,18 +19,27 @@ class ReminderScheduler(private val context: Context) {
     fun scheduleDailyReminder(time: String) {
         val (hour, minute) = parseTimeOrDefault(time)
         val triggerAtMillis = nextTriggerMillis(hour, minute)
-        val alarmManager = context.getSystemService(AlarmManager::class.java)
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
         val pendingIntent = reminderPendingIntent()
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
-        } else {
-            alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && !alarmManager.canScheduleExactAlarms()) {
+                alarmManager.set(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+                return
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                alarmManager.setExactAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            } else {
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, triggerAtMillis, pendingIntent)
+            }
+        } catch (_: SecurityException) {
+            // Skip exact alarm scheduling if permission is not granted.
         }
     }
 
     fun cancelReminder() {
-        val alarmManager = context.getSystemService(AlarmManager::class.java)
+        val alarmManager = context.getSystemService(AlarmManager::class.java) ?: return
         alarmManager.cancel(reminderPendingIntent())
     }
 

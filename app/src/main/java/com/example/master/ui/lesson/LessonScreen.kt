@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import com.example.master.ui.lesson.components.FlashcardExercise
+import com.example.master.ui.lesson.components.SpeedMatchingExercise
 
 @Composable
 fun LessonScreen(
@@ -235,6 +236,16 @@ fun LessonScreen(
                                 onRemembered = { remembered ->
                                     viewModel.onEvent(LessonEvent.FlashcardRated(remembered))
                                 }
+                            )
+                        }
+
+                        is Exercise.SpeedMatching -> {
+                            SpeedMatchingExercise(
+                                exercise = currentExercise,
+                                showResult = uiState.showResult,
+                                onClueSelected = { viewModel.onEvent(LessonEvent.SpeedMatchClueSelected(it)) },
+                                onWordSelected = { viewModel.onEvent(LessonEvent.SpeedMatchWordSelected(it)) },
+                                onTick = { viewModel.onEvent(LessonEvent.SpeedMatchTick) }
                             )
                         }
                         

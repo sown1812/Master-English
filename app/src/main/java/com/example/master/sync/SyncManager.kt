@@ -19,6 +19,7 @@ class SyncManager @Inject constructor(
     private val pendingSyncStore: PendingSyncStore
 ) {
     suspend fun syncNow() {
+        if (authManager.isAnonymous()) return
         flushQueue()
     }
 
@@ -48,21 +49,25 @@ class SyncManager @Inject constructor(
     }
 
     suspend fun flushQueue() {
+        val userId = authManager.getCurrentUserId() ?: return
+        if (authManager.isAnonymous()) return
+
         val queued = pendingSyncStore.getQueue().toMutableList()
         if (queued.isEmpty()) {
-            pullSnapshot()
+            pullSnapshot(userId)
             return
         }
 
         val remaining = mutableListOf<SyncEventsPayloadRemote>()
         for (item in queued) {
-            val result = runCatching { apiService.sync(item) }
+            val payload = if (item.userId == userId) item else item.copy(userId = userId)
+            val result = runCatching { apiService.sync(payload) }
             if (result.isSuccess) {
                 result.getOrNull()?.let { response ->
-                    applyResponse(item.userId, response)
+                    applyResponse(userId, response)
                 }
             } else {
-                remaining.add(item)
+                remaining.add(payload)
             }
         }
 
@@ -73,8 +78,7 @@ class SyncManager @Inject constructor(
         }
     }
 
-    private suspend fun pullSnapshot() {
-        val userId = authManager.getCurrentUserId() ?: return
+    private suspend fun pullSnapshot(userId: String) {
         runCatching { apiService.sync(SyncEventsPayloadRemote(userId = userId)) }
             .onSuccess { response -> applyResponse(userId, response) }
     }

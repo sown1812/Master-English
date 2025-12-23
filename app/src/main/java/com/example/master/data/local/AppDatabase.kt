@@ -78,8 +78,28 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
         
-        private suspend fun seedDatabase(@Suppress("UNUSED_PARAMETER") database: AppDatabase) {
-            // Lesson content now comes from the backend via ContentSyncManager; skip offline seeding.
+        private suspend fun seedDatabase(database: AppDatabase) {
+            val lessonDao = database.lessonDao()
+            val wordDao = database.wordDao()
+            val exerciseDao = database.exerciseDao()
+
+            val existingLessons = runCatching { lessonDao.getTotalLessonsCount() }.getOrDefault(0)
+            val existingWords = runCatching { wordDao.getTotalWordsCount() }.getOrDefault(0)
+            val existingExercises = runCatching { exerciseDao.getTotalExercisesCount() }.getOrDefault(0)
+            if (existingLessons > 0 && existingWords > 0 && existingExercises > 0) return
+
+            val assetSeed = loadSeedFromAssets()
+            if (assetSeed != null) {
+                lessonDao.insertLessons(assetSeed.lessons)
+                wordDao.insertWords(assetSeed.words)
+                exerciseDao.insertExercises(assetSeed.exercises)
+                return
+            }
+
+            // Fallback to bundled seed lists when backend is unavailable.
+            lessonDao.insertLessons(getInitialLessons())
+            wordDao.insertWords(getInitialWords())
+            exerciseDao.insertExercises(getInitialExercises())
         }
 
         val MIGRATION_1_2 = object : Migration(1, 2) {

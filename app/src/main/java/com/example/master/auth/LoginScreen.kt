@@ -1,4 +1,4 @@
-package com.example.master.auth
+﻿package com.example.master.auth
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -10,12 +10,9 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Email
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -24,15 +21,14 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.example.master.R
 
 @Composable
@@ -40,25 +36,18 @@ fun LoginScreen(
     viewModel: AuthViewModel,
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
-    onGoogleSignIn: () -> Unit
+    onGoogleSignIn: () -> Unit,
+    onAnonymousSignIn: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val authState by viewModel.authState.collectAsState()
-    
-    // Navigate on successful login
+
     LaunchedEffect(authState) {
         if (authState is AuthState.Authenticated) {
             onLoginSuccess()
         }
     }
-    
-    // Show error messages
-    LaunchedEffect(uiState.errorMessage) {
-        uiState.errorMessage?.let {
-            // Error will be shown in UI
-        }
-    }
-    
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -76,16 +65,15 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // Logo/Title
             Icon(
                 imageVector = Icons.Filled.School,
                 contentDescription = null,
                 tint = Color.White,
                 modifier = Modifier.size(80.dp)
             )
-            
+
             Spacer(modifier = Modifier.height(16.dp))
-            
+
             Text(
                 text = stringResource(R.string.login_title),
                 style = MaterialTheme.typography.headlineLarge.copy(
@@ -93,16 +81,15 @@ fun LoginScreen(
                     color = Color.White
                 )
             )
-            
+
             Text(
                 text = stringResource(R.string.login_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = Color.White.copy(alpha = 0.9f)
             )
-            
+
             Spacer(modifier = Modifier.height(48.dp))
-            
-            // Login Card
+
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(24.dp),
@@ -125,17 +112,14 @@ fun LoginScreen(
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF6B7280)
                     )
-                    
+
                     Spacer(modifier = Modifier.height(32.dp))
-                    
-                    // Email Field
+
                     OutlinedTextField(
                         value = uiState.email,
                         onValueChange = { viewModel.onEmailChanged(it) },
                         label = { Text(stringResource(R.string.login_email_label)) },
-                        leadingIcon = {
-                            Icon(Icons.Filled.Email, contentDescription = null)
-                        },
+                        leadingIcon = { Icon(Icons.Filled.Email, contentDescription = null) },
                         isError = uiState.emailError != null,
                         supportingText = uiState.emailError?.let { { Text(it) } },
                         keyboardOptions = KeyboardOptions(
@@ -146,65 +130,51 @@ fun LoginScreen(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Password Field
+
                     var passwordVisible by remember { mutableStateOf(false) }
-                    
+
                     OutlinedTextField(
                         value = uiState.password,
                         onValueChange = { viewModel.onPasswordChanged(it) },
                         label = { Text(stringResource(R.string.login_password_label)) },
-                        leadingIcon = {
-                            Icon(Icons.Filled.Lock, contentDescription = null)
-                        },
+                        leadingIcon = { Icon(Icons.Filled.Lock, contentDescription = null) },
                         trailingIcon = {
                             IconButton(onClick = { passwordVisible = !passwordVisible }) {
                                 Icon(
-                                    imageVector = if (passwordVisible) 
-                                        Icons.Filled.Visibility 
-                                    else 
-                                        Icons.Filled.VisibilityOff,
-                                    contentDescription = if (passwordVisible) 
-                                        stringResource(R.string.login_hide_password) 
-                                    else 
-                                        stringResource(R.string.login_show_password)
+                                    imageVector = if (passwordVisible) Icons.Filled.Visibility else Icons.Filled.VisibilityOff,
+                                    contentDescription = if (passwordVisible)
+                                        stringResource(R.string.login_hide_password)
+                                    else stringResource(R.string.login_show_password)
                                 )
                             }
                         },
-                        visualTransformation = if (passwordVisible) 
-                            VisualTransformation.None 
-                        else 
-                            PasswordVisualTransformation(),
+                        visualTransformation = if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
                         isError = uiState.passwordError != null,
                         supportingText = uiState.passwordError?.let { { Text(it) } },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Password,
                             imeAction = ImeAction.Done
                         ),
-                        keyboardActions = KeyboardActions(
-                            onDone = { viewModel.signIn() }
-                        ),
+                        keyboardActions = KeyboardActions(onDone = { viewModel.signIn() }),
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    
-                    // Error Message
-                    if (uiState.errorMessage != null) {
+
+                    uiState.errorMessage?.let {
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = uiState.errorMessage!!,
+                            text = it,
                             color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
                             textAlign = TextAlign.Center
                         )
                     }
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Login Button
+
                     Button(
                         onClick = { viewModel.signIn() },
                         enabled = !uiState.isLoading,
@@ -212,40 +182,29 @@ fun LoginScreen(
                             .fillMaxWidth()
                             .height(56.dp),
                         shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF6366F1)
-                        )
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
                     ) {
                         if (uiState.isLoading && uiState.loginInProgress == AuthFlow.EMAIL) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp),
-                                color = Color.White
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
                         } else {
                             Text(
                                 text = stringResource(R.string.login_sign_in),
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.Bold
-                                )
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
                             )
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(16.dp))
-                    
-                    // Forgot Password
+
                     Text(
                         text = stringResource(R.string.login_forgot_password),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF6366F1),
-                        modifier = Modifier.clickable {
-                            // TODO: Navigate to forgot password
-                        }
+                        modifier = Modifier.clickable { /* TODO */ }
                     )
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Google Sign-In Button
+
                     OutlinedButton(
                         onClick = onGoogleSignIn,
                         enabled = !uiState.isLoading || (uiState.isLoading && uiState.loginInProgress == AuthFlow.GOOGLE),
@@ -255,28 +214,37 @@ fun LoginScreen(
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         if (uiState.isLoading && uiState.loginInProgress == AuthFlow.GOOGLE) {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(24.dp)
-                            )
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
                         } else {
-                            Icon(
-                                imageVector = Icons.Filled.AccountCircle,
-                                contentDescription = null
-                            )
+                            Icon(imageVector = Icons.Filled.AccountCircle, contentDescription = null)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = stringResource(R.string.login_continue_google),
-                                style = MaterialTheme.typography.titleMedium.copy(
-                                    fontWeight = FontWeight.SemiBold
-                                ),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
                                 color = Color(0xFF1F2937)
                             )
                         }
                     }
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Divider
+
+                    OutlinedButton(
+                        onClick = onAnonymousSignIn,
+                        enabled = !uiState.isLoading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text(
+                            text = "Tiếp tục với khách",
+                            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                            color = Color(0xFF1F2937)
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
+
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically
@@ -290,10 +258,9 @@ fun LoginScreen(
                         )
                         HorizontalDivider(modifier = Modifier.weight(1f))
                     }
-                    
+
                     Spacer(modifier = Modifier.height(24.dp))
-                    
-                    // Sign Up Link
+
                     Row(
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
@@ -305,9 +272,7 @@ fun LoginScreen(
                         )
                         Text(
                             text = stringResource(R.string.login_sign_up),
-                            style = MaterialTheme.typography.bodyMedium.copy(
-                                fontWeight = FontWeight.Bold
-                            ),
+                            style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
                             color = Color(0xFF6366F1),
                             modifier = Modifier.clickable { onNavigateToRegister() }
                         )

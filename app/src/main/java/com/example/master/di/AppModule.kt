@@ -9,6 +9,7 @@ import com.example.master.data.local.AppDatabase
 import com.example.master.data.local.GameStateStore
 import com.example.master.data.local.NotificationSettingsStore
 import com.example.master.data.local.PendingSyncStore
+import com.example.master.data.local.WordleStateStore
 import com.example.master.data.repository.LearningRepository
 import com.example.master.di.ApplicationScope
 import com.example.master.network.ApiService
@@ -55,6 +56,11 @@ object AppModule {
     @Singleton
     fun provideGameStateStore(@ApplicationContext context: Context): GameStateStore =
         GameStateStore(context)
+
+    @Provides
+    @Singleton
+    fun provideWordleStateStore(@ApplicationContext context: Context): WordleStateStore =
+        WordleStateStore(context)
 
     @Provides
     @Singleton

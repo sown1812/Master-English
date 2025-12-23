@@ -13,6 +13,7 @@ class ContentSyncManager @Inject constructor(
 ) {
     suspend fun refreshFromServer() {
         val lessons = runCatching { apiService.getLessons() }.getOrElse { return }
+        if (lessons.isEmpty()) return
         repository.clearContent()
         repository.replaceLessons(lessons.map { it.toEntity() })
 

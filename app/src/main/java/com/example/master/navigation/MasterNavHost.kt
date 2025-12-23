@@ -10,9 +10,9 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -48,6 +48,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavDestination
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -57,9 +58,6 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import androidx.credentials.CredentialManager
-import androidx.credentials.GetCredentialRequest
-import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.master.R
 import com.example.master.auth.AuthState
 import com.example.master.auth.AuthViewModel
@@ -69,28 +67,30 @@ import com.example.master.core.audio.AudioPlayer
 import com.example.master.core.audio.TTSManager
 import com.example.master.ui.dashboard.DashboardRoute
 import com.example.master.ui.dashboard.DashboardViewModel
+import com.example.master.ui.flashcard.FlashcardScreen
+import com.example.master.ui.flashcard.FlashcardViewModel
 import com.example.master.ui.home.HomeNavigationEvent
 import com.example.master.ui.home.HomeRoute
 import com.example.master.ui.home.HomeViewModel
-import com.example.master.ui.flashcard.FlashcardScreen
-import com.example.master.ui.flashcard.FlashcardViewModel
 import com.example.master.ui.lesson.LessonEvent
 import com.example.master.ui.lesson.LessonScreen
 import com.example.master.ui.lesson.LessonViewModel
 import com.example.master.ui.notifications.NotificationsRoute
 import com.example.master.ui.notifications.NotificationsViewModel
+import com.example.master.ui.practice.MistakeReviewRoute
 import com.example.master.ui.practice.PracticeScreen
 import com.example.master.ui.profile.ProfileScreen
 import com.example.master.ui.profile.ProfileViewModel
-import com.example.master.ui.practice.MistakeReviewRoute
-import com.example.master.ui.sync.SyncViewModel
 import com.example.master.ui.settings.SettingsScreen
 import com.example.master.ui.settings.SettingsViewModel
 import com.example.master.ui.store.DailyChallengeScreen
 import com.example.master.ui.store.StoreRoute
 import com.example.master.ui.store.StoreViewModel
-import com.google.android.libraries.identity.googleid.GetGoogleIdOption
-import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
+import com.example.master.ui.sync.SyncViewModel
+import com.example.master.ui.wordle.WordleRoute
+import com.google.android.gms.auth.api.signin.GoogleSignIn
+import com.google.android.gms.auth.api.signin.GoogleSignInOptions
+import com.google.android.gms.common.api.ApiException
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -146,16 +146,9 @@ fun MasterApp() {
     ) { innerPadding ->
         NavHost(
             navController = navController,
-            startDestination = "onboarding",
+            startDestination = "login",
             modifier = Modifier.padding(innerPadding)
         ) {
-            composable("onboarding") {
-                OnboardingScreen(
-                    onContinue = { navController.navigate("auth_gate") { popUpTo("onboarding") { inclusive = true } } },
-                    onLogin = { navController.navigate("login") { popUpTo("onboarding") { inclusive = true } } }
-                )
-            }
-
             composable("auth_gate") {
                 val viewModel: AuthViewModel = hiltViewModel()
                 val syncViewModel: SyncViewModel = hiltViewModel()
@@ -180,7 +173,6 @@ fun MasterApp() {
                     }
                 }
 
-                // Simple splash/loading while determining auth state
                 Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
@@ -189,8 +181,26 @@ fun MasterApp() {
             composable("login") {
                 val viewModel: AuthViewModel = hiltViewModel()
                 val context = LocalContext.current
-                val credentialManager = remember { CredentialManager.create(context) }
                 val scope = rememberCoroutineScope()
+
+                val googleSignInLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.StartActivityForResult()
+                ) { result ->
+                    val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+                    try {
+                        val account = task.getResult(ApiException::class.java)
+                        val token = account?.idToken
+                        if (!token.isNullOrBlank()) {
+                            viewModel.signInWithGoogle(token)
+                        } else {
+                            viewModel.reportError(
+                                "Google sign-in ok but idToken is null. Check web client id and SHA for ${context.packageName}."
+                            )
+                        }
+                    } catch (e: ApiException) {
+                        viewModel.reportError("Google sign-in failed: ${e.statusCode} ${e.localizedMessage}")
+                    }
+                }
 
                 LoginScreen(
                     viewModel = viewModel,
@@ -206,26 +216,16 @@ fun MasterApp() {
                         }
                     },
                     onGoogleSignIn = {
-                        val googleIdOption = GetGoogleIdOption.Builder()
-                            .setFilterByAuthorizedAccounts(false)
-                            .setServerClientId(context.getString(R.string.default_web_client_id))
-                            .setAutoSelectEnabled(false)
-                            .build()
-
-                        val request = GetCredentialRequest.Builder()
-                            .addCredentialOption(googleIdOption)
-                            .build()
-
                         scope.launch {
-                            handleGoogleSignIn(
-                                context = context,
-                                credentialManager = credentialManager,
-                                request = request,
-                                onToken = { viewModel.signInWithGoogle(it) },
-                                onError = { viewModel.reportError(it) }
-                            )
+                            val gso = GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
+                                .requestIdToken(context.getString(R.string.default_web_client_id))
+                                .requestEmail()
+                                .build()
+                            val client = GoogleSignIn.getClient(context, gso)
+                            googleSignInLauncher.launch(client.signInIntent)
                         }
-                    }
+                    },
+                    onAnonymousSignIn = { viewModel.signInAnonymously() }
                 )
             }
 
@@ -291,7 +291,8 @@ fun MasterApp() {
                     onOpenFlashcards = { lessonId -> navController.navigate("flashcards/$lessonId") },
                     onOpenLeaderboard = { navController.navigate("leaderboard") },
                     onOpenShop = { navController.navigate("shop") },
-                    onOpenMistakes = { navController.navigate("mistakes") }
+                    onOpenMistakes = { navController.navigate("mistakes") },
+                    onOpenWordle = { navController.navigate("wordle") }
                 )
             }
 
@@ -333,6 +334,10 @@ fun MasterApp() {
                     onStart = viewModel::startDailyChallenge,
                     onSubmit = { viewModel.submitDailyChallenge(score = 50) }
                 )
+            }
+
+            composable("wordle") {
+                WordleRoute()
             }
 
             composable(
@@ -455,74 +460,6 @@ private fun launchSpeechRecognizer(
 }
 
 private fun shouldShowBottomBar(currentDestination: NavDestination?): Boolean {
-    // Hide on auth screens, show everywhere else so users always have quick navigation
-    val hidden = setOf("onboarding", "auth_gate", "login", "register")
+    val hidden = setOf("auth_gate", "login", "register")
     return currentDestination?.route !in hidden
-}
-
-@Composable
-private fun OnboardingScreen(
-    onContinue: () -> Unit,
-    onLogin: () -> Unit
-) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFEFF6FF)),
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(24.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Text(
-                text = "Chào mừng đến Master English",
-                style = androidx.compose.material3.MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
-                color = Color(0xFF0F172A),
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = "Lộ trình cá nhân, luyện tập đa dạng, streak mỗi ngày.\nBật nhắc giờ để không bỏ lỡ.",
-                style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF475569),
-                textAlign = TextAlign.Center
-            )
-            Button(
-                onClick = onContinue,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Bắt đầu", color = Color.White, fontWeight = FontWeight.Bold)
-            }
-            Button(
-                onClick = onLogin,
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE2E8F0)),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Tôi đã có tài khoản", color = Color(0xFF111827), fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-private suspend fun handleGoogleSignIn(
-    context: android.content.Context,
-    credentialManager: CredentialManager,
-    request: GetCredentialRequest,
-    onToken: (String) -> Unit,
-    onError: (String) -> Unit
-) {
-    try {
-        val credResult = credentialManager.getCredential(context, request)
-        val token = GoogleIdTokenCredential.createFrom(credResult.credential.data).idToken
-        if (!token.isNullOrBlank()) {
-            onToken(token)
-        } else {
-            onError("Unable to sign in with Google")
-        }
-    } catch (e: Exception) {
-        onError(e.localizedMessage ?: "Unable to sign in with Google")
-    }
 }

@@ -1,4 +1,4 @@
-package com.example.master.ui.store
+﻿package com.example.master.ui.store
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -31,7 +30,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.example.master.data.local.ChallengeStatus
-import com.example.master.ui.home.BoosterItem
 
 @Composable
 fun StoreRoute(
@@ -168,7 +166,7 @@ private fun DailyChallengeCard(
 
 @Composable
 private fun BoostersSection(
-    boosters: List<BoosterItem>,
+    boosters: List<BoosterUi>,
     onBuy: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -203,7 +201,7 @@ private fun BoostersSection(
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Button(
-                        onClick = { onBuy(booster.title) },
+                        onClick = { onBuy(booster.key) },
                         enabled = !booster.isOwned,
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C5AE6))
@@ -226,7 +224,7 @@ private fun QuestsSection(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
-            text = "Quest",
+            text = "Nhiệm vụ",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color(0xFF3C2A6E)
         )
@@ -282,7 +280,7 @@ private fun QuestsSection(
                             color = Color(0xFF2F6F80)
                         )
                         Button(
-                            onClick = { onClaim(quest.title) },
+                            onClick = { onClaim(quest.key) },
                             enabled = quest.isCompleted && !quest.isClaimed,
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88A8))

@@ -15,6 +15,7 @@ data class HomeUiState(
     val progress: Float,
     val maxLevel: Int,
     val totalScore: Int,
+    val learningPath: List<LearningPathLesson>,
     val badges: List<AchievementBadge>,
     val dailyChallenge: DailyChallenge,
     val quests: List<Quest>,
@@ -34,6 +35,26 @@ data class HomeUiState(
             progress = 0.05f,
             maxLevel = 20,
             totalScore = 120,
+            learningPath = listOf(
+                LearningPathLesson(
+                    id = 1,
+                    title = "Basics 1",
+                    description = "Greetings and self-intros",
+                    difficulty = "EASY",
+                    totalWords = 20,
+                    totalExercises = 12,
+                    isUnlocked = true
+                ),
+                LearningPathLesson(
+                    id = 2,
+                    title = "Basics 2",
+                    description = "Simple people words",
+                    difficulty = "EASY",
+                    totalWords = 12,
+                    totalExercises = 8,
+                    isUnlocked = false
+                )
+            ),
             badges = listOf(
                 AchievementBadge.FirstWords(unlocked = true, date = "2025-10-01"),
                 AchievementBadge.VocabularyMaster(unlocked = false, date = null),
@@ -175,4 +196,14 @@ data class ThemeOption(
     val secondaryColor: String,
     val isUnlocked: Boolean,
     val isSelected: Boolean
+)
+
+data class LearningPathLesson(
+    val id: Int,
+    val title: String,
+    val description: String,
+    val difficulty: String,
+    val totalWords: Int,
+    val totalExercises: Int,
+    val isUnlocked: Boolean
 )

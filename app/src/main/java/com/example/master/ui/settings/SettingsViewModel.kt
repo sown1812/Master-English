@@ -4,16 +4,18 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.master.auth.AuthManager
 import com.example.master.data.local.NotificationSettingsStore
-import com.example.master.sync.OfflineManager
 import com.example.master.notifications.ReminderScheduler
+import com.example.master.sync.OfflineManager
 import dagger.hilt.android.lifecycle.HiltViewModel
+import javax.inject.Inject
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import javax.inject.Inject
+import kotlinx.coroutines.withContext
 
 data class SettingsUiState(
     val notificationsEnabled: Boolean = true,
@@ -90,13 +92,13 @@ class SettingsViewModel @Inject constructor(
 
     fun prefetchOfflineContent() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isOfflineDownloading = true, offlineStatus = "Đang tải nội dung...") }
-            runCatching { offlineManager.prefetchAllLessons() }
+            _uiState.update { it.copy(isOfflineDownloading = true, offlineStatus = "Dang tai noi dung...") }
+            runCatching { withContext(Dispatchers.IO) { offlineManager.prefetchAllLessons() } }
                 .onSuccess {
-                    _uiState.update { it.copy(isOfflineDownloading = false, offlineStatus = "Đã tải xong để học offline") }
+                    _uiState.update { it.copy(isOfflineDownloading = false, offlineStatus = "Da tai xong, co the hoc offline") }
                 }
                 .onFailure { e ->
-                    _uiState.update { it.copy(isOfflineDownloading = false, offlineStatus = "Lỗi khi tải: ${e.message}") }
+                    _uiState.update { it.copy(isOfflineDownloading = false, offlineStatus = "Loi khi tai: ${e.message}") }
                 }
         }
     }
@@ -106,14 +108,14 @@ class SettingsViewModel @Inject constructor(
             _uiState.update { it.copy(isProcessing = true, message = null) }
             runCatching { authManager.signOut() }
                 .onSuccess {
-                    _uiState.update { it.copy(isProcessing = false, message = "Đã đăng xuất") }
+                    _uiState.update { it.copy(isProcessing = false, message = "Da dang xuat") }
                     onComplete(true)
                 }
                 .onFailure { e ->
                     _uiState.update {
                         it.copy(
                             isProcessing = false,
-                            message = e.message ?: "Không thể đăng xuất"
+                            message = e.message ?: "Khong the dang xuat"
                         )
                     }
                     onComplete(false)

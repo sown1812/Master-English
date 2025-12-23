@@ -1,4 +1,4 @@
-package com.example.master.ui.home
+﻿package com.example.master.ui.home
 
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -42,6 +42,20 @@ class HomeViewModel @Inject constructor(
                 val totalLessons = lessons.size.coerceAtLeast(1)
                 val completed = user?.lessonsCompleted ?: 0
                 val progress = (completed.toFloat() / totalLessons.toFloat()).coerceIn(0f, 1f)
+                val learningPath = lessons
+                    .sortedBy { it.order }
+                    .map { lesson ->
+                        LearningPathLesson(
+                            id = lesson.id,
+                            title = lesson.title,
+                            description = lesson.description,
+                            difficulty = lesson.difficulty,
+                            totalWords = lesson.totalWords,
+                            totalExercises = lesson.totalExercises,
+                            isUnlocked = lesson.isUnlocked
+                        )
+                    }
+
                 HomeUiState(
                     avatarUrl = user?.avatarUrl,
                     userName = user?.displayName ?: "Người học",
@@ -54,6 +68,7 @@ class HomeViewModel @Inject constructor(
                     progress = progress,
                     maxLevel = totalLessons,
                     totalScore = user?.totalXP ?: 0,
+                    learningPath = learningPath,
                     badges = emptyList(),
                     dailyChallenge = DailyChallenge(
                         title = "Hoàn thành 1 bài hôm nay",
@@ -69,13 +84,20 @@ class HomeViewModel @Inject constructor(
     }
 
     private fun flushPendingSync() {
-        viewModelScope.launch {
+        viewModelScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             runCatching { syncManager.flushQueue() }
         }
     }
 
     fun onPlayClicked() {
-        emitEvent(HomeNavigationEvent.NavigateToPlay(_uiState.value.level))
+        val lessonId = _uiState.value.learningPath.firstOrNull { it.isUnlocked }?.id
+            ?: _uiState.value.learningPath.firstOrNull()?.id
+            ?: _uiState.value.level
+        emitEvent(HomeNavigationEvent.NavigateToPlay(lessonId))
+    }
+
+    fun onLessonSelected(lessonId: Int) {
+        emitEvent(HomeNavigationEvent.NavigateToPlay(lessonId))
     }
 
     fun onDailyChallengeClicked() {
