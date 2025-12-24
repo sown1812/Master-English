@@ -11,8 +11,10 @@ import com.example.master.data.repository.LearningRepository
 import com.example.master.network.ApiService
 import com.example.master.network.LeaderboardEntryRemote
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
@@ -54,7 +56,9 @@ class DashboardViewModel @Inject constructor(
                 repository.getCurrentUser()
             ) { progress, achievements, user -> Triple(progress, achievements, user) }
                 .collect { (progress, achievements, user) ->
-                    val stats = repository.getUserStatistics(userId)
+                    val stats = withContext(Dispatchers.IO) {
+                        repository.getUserStatistics(userId)
+                    }
                     val weekly = buildWeeklyProgress(progress)
                     val achievementsSummary = mapAchievements(achievements)
                     val xpProgress = XpProgress(

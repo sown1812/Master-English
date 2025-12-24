@@ -30,6 +30,7 @@ fun MultipleChoiceExercise(
     onPlayNormal: () -> Unit,
     onPlaySlow: () -> Unit
 ) {
+    val displayQuestion = extractQuotedPrompt(exercise.question)
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -55,7 +56,7 @@ fun MultipleChoiceExercise(
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 Text(
-                    text = exercise.question,
+                    text = displayQuestion,
                     style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
                     color = Color(0xFF1F2937)
                 )
@@ -177,4 +178,9 @@ fun MultipleChoiceExercise(
             }
         }
     }
+}
+
+private fun extractQuotedPrompt(question: String): String {
+    val regex = Regex("""^[^'"]*['"]([^'"]+)['"].*$""")
+    return regex.find(question)?.groupValues?.get(1)?.trim().orEmpty().ifBlank { question }
 }

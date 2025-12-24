@@ -40,6 +40,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 import com.example.master.ui.lesson.components.FlashcardExercise
@@ -296,21 +297,25 @@ private fun LessonStatsCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 20.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            StatItem(label = "Exercise", value = "$current / $total")
-            StatItem(label = "Correct", value = correct.toString())
-            StatItem(label = "Wrong", value = wrong.toString())
+            StatItem(modifier = Modifier.weight(1f), label = "Exercise", value = "$current / $total")
+            StatItem(modifier = Modifier.weight(1f), label = "Correct", value = correct.toString())
+            StatItem(modifier = Modifier.weight(1f), label = "Wrong", value = wrong.toString())
         }
     }
 }
 
 @Composable
 private fun StatItem(
+    modifier: Modifier = Modifier,
     label: String,
     value: String
 ) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         Text(
             text = label,
             style = MaterialTheme.typography.labelMedium,
@@ -340,21 +345,27 @@ fun LessonTopBar(
             .background(Color.White)
             .padding(16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(onClick = onExit) {
+        Box(modifier = Modifier.fillMaxWidth()) {
+            IconButton(
+                onClick = onExit,
+                modifier = Modifier.align(Alignment.CenterStart)
+            ) {
                 Icon(Icons.Filled.Close, contentDescription = "Exit")
             }
             
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.align(Alignment.Center)
             )
             
-            Column(horizontalAlignment = Alignment.End) {
+            Column(
+                modifier = Modifier.align(Alignment.CenterEnd),
+                horizontalAlignment = Alignment.End
+            ) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
                         imageVector = Icons.Filled.Favorite,

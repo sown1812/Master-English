@@ -1,4 +1,4 @@
-package com.example.master.ui.home
+﻿package com.example.master.ui.home
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -204,15 +204,6 @@ private fun ProfileBar(userName: String) {
                     )
                 }
             }
-            Button(
-                onClick = { },
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C41C8)),
-                shape = RoundedCornerShape(16.dp)
-            ) {
-                Icon(imageVector = Icons.Filled.Settings, contentDescription = null, tint = Color.White)
-                Spacer(modifier = Modifier.width(6.dp))
-                Text(text = "Tùy chỉnh", color = Color.White, fontWeight = FontWeight.Bold)
-            }
         }
     }
 }
@@ -234,7 +225,7 @@ private fun StatusChips(coins: Int, streakDays: Int, rewardAvailable: Boolean) {
         StatusChip(
             modifier = Modifier.weight(1f),
             title = "Streak",
-            value = "${streakDays} ngày",
+            value = "${streakDays} ngÃ y",
             icon = Icons.Filled.Favorite,
             background = Color(0xFFFFD8DF),
             accent = if (rewardAvailable) Color(0xFFFF6B6B) else Color(0xFFB94D5D)
@@ -324,7 +315,7 @@ private fun HeroCard(
                     color = Color(0xFFFA7CDE)
                 )
                 Text(
-                    text = "Tien do: ${(progress * maxLevel).toInt()} / $maxLevel cap do",
+                    text = "Tiến độ: ${(progress * maxLevel).toInt()} / $maxLevel cấp độ",
                     style = MaterialTheme.typography.bodyMedium,
                     color = Color(0xFF6E3C72)
                 )
@@ -340,7 +331,7 @@ private fun HeroCard(
                     ) {
                         Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Bat dau hoc", fontWeight = FontWeight.Bold)
+                        Text(text = "Bắt đầu học", fontWeight = FontWeight.Bold)
                     }
                     Button(
                         onClick = onFlashcardClick,
@@ -377,13 +368,13 @@ private fun LearningPathSection(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Lộ trình học",
+            text = "Lá»™ trÃ¬nh há»c",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color(0xFF442C66)
         )
         if (lessons.isEmpty()) {
             Text(
-                text = "Chưa có bài học. Vui lòng đồng bộ nội dung.",
+                text = "ChÆ°a cÃ³ bÃ i há»c. Vui lÃ²ng Ä‘á»“ng bá»™ ná»™i dung.",
                 style = MaterialTheme.typography.bodySmall,
                 color = Color(0xFF7D63A4)
             )
@@ -441,7 +432,7 @@ private fun LearningPathCard(
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     DifficultyPill(text = lesson.difficulty, color = tagColor)
                     Text(
-                        text = "${lesson.totalWords} từ • ${lesson.totalExercises} bài",
+                        text = "${lesson.totalWords} tá»« â€¢ ${lesson.totalExercises} bÃ i",
                         style = MaterialTheme.typography.labelSmall,
                         color = Color(0xFF6B7280)
                     )
@@ -524,7 +515,7 @@ private fun DailyChallengeCard(
                         color = Color(0xFF34418E)
                     )
                     Text(
-                        text = "Hết hạn sau $countdown",
+                        text = "Háº¿t háº¡n sau $countdown",
                         style = MaterialTheme.typography.bodySmall,
                         color = Color(0xFF7381C8)
                     )
@@ -545,7 +536,7 @@ private fun DailyChallengeCard(
                 shape = RoundedCornerShape(16.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4C6FFF))
             ) {
-                Text(text = if (challenge.isAccepted) "Tiếp tục" else "Nhận thử thách", fontWeight = FontWeight.Bold)
+                Text(text = if (challenge.isAccepted) "Tiáº¿p tá»¥c" else "Nháº­n thá»­ thÃ¡ch", fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -568,12 +559,12 @@ private fun AchievementsSection(
         ) {
             Column {
                 Text(
-                    text = "Thành tích",
+                    text = "ThÃ nh tÃ­ch",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = Color(0xFF442C66)
                 )
                 Text(
-                    text = "Tổng điểm: $totalScore",
+                    text = "Tá»•ng Ä‘iá»ƒm: $totalScore",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF7D63A4)
                 )
@@ -583,7 +574,7 @@ private fun AchievementsSection(
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6F91))
             ) {
-                Text(text = "Xem tất cả", fontWeight = FontWeight.Bold)
+                Text(text = "Xem táº¥t cáº£", fontWeight = FontWeight.Bold)
             }
         }
         Row(
@@ -629,13 +620,13 @@ private fun AchievementChip(badge: AchievementBadge) {
         }
         if (badge.unlocked) {
             Text(
-                text = "Đạt được: ${badge.date}",
+                text = "Äáº¡t Ä‘Æ°á»£c: ${badge.date}",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color(0xFF9869D1)
             )
         } else {
             Text(
-                text = "Chưa mở khóa",
+                text = "ChÆ°a má»Ÿ khÃ³a",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color(0xFFA38CCB)
             )
@@ -650,7 +641,7 @@ private fun QuestSection(quests: List<Quest>, onQuestClick: (Quest) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Quests hôm nay",
+            text = "Quests hÃ´m nay",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color(0xFF442C66)
         )
@@ -709,7 +700,7 @@ private fun QuestCard(quest: Quest, onClick: () -> Unit) {
                 color = Color(0xFFB197F5)
             )
             Text(
-                text = "Tiến độ: ${quest.stepsLabel}",
+                text = "Tiáº¿n Ä‘á»™: ${quest.stepsLabel}",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color(0xFF6C41A1)
             )
@@ -818,7 +809,7 @@ private fun BoosterCard(booster: BoosterItem, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = if (booster.isOwned) "Đã sở hữu" else "${booster.costCoins} coins",
+                    text = if (booster.isOwned) "ÄÃ£ sá»Ÿ há»¯u" else "${booster.costCoins} coins",
                     style = MaterialTheme.typography.labelMedium,
                     color = accentColor,
                     fontWeight = FontWeight.Bold
@@ -833,7 +824,7 @@ private fun BoosterCard(booster: BoosterItem, onClick: () -> Unit) {
                     )
                 ) {
                     Text(
-                        text = if (booster.isOwned) "Đang dùng" else "Mua",
+                        text = if (booster.isOwned) "Äang dÃ¹ng" else "Mua",
                         color = if (booster.isOwned) Color.White.copy(alpha = 0.6f) else Color.White,
                         fontWeight = FontWeight.Bold
                     )
@@ -850,7 +841,7 @@ private fun ThemeSelector(themes: List<ThemeOption>, onThemeClick: (ThemeOption)
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Giao diện",
+            text = "Giao diá»‡n",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color(0xFF442C66)
         )
@@ -909,7 +900,7 @@ private fun ThemeCard(theme: ThemeOption, onClick: () -> Unit) {
                 }
             }
             Text(
-                text = if (theme.isUnlocked) "${if (theme.isSelected) "Đang chọn" else "Đã mở khóa"}" else "Cần 500 coins",
+                text = if (theme.isUnlocked) "${if (theme.isSelected) "Äang chá»n" else "ÄÃ£ má»Ÿ khÃ³a"}" else "Cáº§n 500 coins",
                 style = MaterialTheme.typography.labelMedium,
                 color = if (theme.isSelected) Color(0xFF2ECC71) else Color(0xFF7D63A4)
             )
@@ -931,7 +922,7 @@ private fun ThemeCard(theme: ThemeOption, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (theme.isSelected) "Đang dùng" else "Áp dụng",
+                    text = if (theme.isSelected) "Äang dÃ¹ng" else "Ãp dá»¥ng",
                     fontWeight = FontWeight.Bold
                 )
             }

@@ -1,4 +1,4 @@
-package com.example.master.ui.lesson
+﻿package com.example.master.ui.lesson
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
@@ -613,7 +613,7 @@ class LessonViewModel @Inject constructor(
         val userAnswer = when (exercise) {
             is Exercise.MultipleChoice -> exercise.selectedAnswer.orEmpty()
             is Exercise.FillBlank -> exercise.userAnswer
-            is Exercise.Matching -> exercise.selectedPairs.entries.joinToString { "${it.key}→${it.value}" }
+            is Exercise.Matching -> exercise.selectedPairs.entries.joinToString { "${it.key}â†’${it.value}" }
             is Exercise.Translation -> exercise.userAnswer
             is Exercise.Listening -> exercise.selectedAnswer.orEmpty()
             is Exercise.Speaking -> exercise.recognizedText
@@ -787,7 +787,7 @@ class LessonViewModel @Inject constructor(
             exercises.add(
                 Exercise.MultipleChoice(
                     id = -(idx + 1),
-                    question = "Chọn nghĩa của \"${word.word}\"",
+                    question = "Chọn nghĩa của " + "\"${word.word}\"",
                     correctAnswer = word.translation,
                     word = word,
                     explanation = word.exampleTranslation,
