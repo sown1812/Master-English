@@ -1,21 +1,11 @@
 # Use a multi-stage build to keep the image small
-FROM gradle:8.5-jdk17 AS build
-WORKDIR /app
-ENV SKIP_ANDROID=true
+FROM gradle:8.9-jdk17 AS build
+WORKDIR /workspace
 COPY . .
-# Build the application shading dependencies into a fat JAR (or distZip/installDist)
-# Build the application shading dependencies into a fat JAR (or distZip/installDist)
-# Using installDist is standard for Ktor to get the script + libs
-RUN gradle :server:installDist --no-daemon
+RUN gradle :server:build --no-daemon
 
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre
 WORKDIR /app
-# Copy the installed application from the build stage
-COPY --from=build /app/server/build/install/server /app
-
-# Expose the default port (Render will override this env var, but good for doc)
-ENV PORT=8080
+COPY --from=build /workspace/server/build/libs/*.jar /app/server.jar
 EXPOSE 8080
-
-# Run the startup script
-CMD ["./bin/server"]
+CMD ["java", "-jar", "/app/server.jar"]
