@@ -3,7 +3,7 @@ services:
     name: masterenglish-server
     env: docker
     rootDir: server
-    dockerfilePath: server/Dockerfile
+    dockerfilePath: Dockerfile
     autoDeploy: true
     plan: free
     envVars:

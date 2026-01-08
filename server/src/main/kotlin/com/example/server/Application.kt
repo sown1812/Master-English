@@ -84,7 +84,8 @@ fun main() {
     Migrator.migrate(dbUrl, dbUser, dbPwd)
     DbFactory.init(dbUrl, dbUser, dbPwd)
 
-    embeddedServer(Netty, port = 8080, host = "0.0.0.0") {
+    val port = System.getenv("PORT")?.toInt() ?: 8080
+    embeddedServer(Netty, port = port, host = "0.0.0.0") {
         module()
     }.start(wait = false)
 }
