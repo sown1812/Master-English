@@ -42,7 +42,7 @@ android {
         }
         create("prod") {
             dimension = "env"
-            buildConfigField("String", "API_BASE_URL", "\"https://api.master.com/\"")
+            buildConfigField("String", "API_BASE_URL", "\"https://master-backend-tet2.onrender.com/\"")
         }
     }
 
