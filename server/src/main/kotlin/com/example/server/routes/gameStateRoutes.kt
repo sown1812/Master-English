@@ -1,11 +1,13 @@
 package com.example.server.routes
 
 import com.example.server.auth.ensureUser
+import com.example.server.auth.requireFirebaseUser
 import com.example.server.dbQuery
 import com.example.server.model.*
 import com.example.server.tables.DailyChallenges
 import com.example.server.tables.UserBoosters
 import com.example.server.tables.UserQuests
+import com.example.server.tables.Users
 import io.ktor.http.*
 import io.ktor.server.application.*
 import io.ktor.server.request.*
@@ -51,13 +53,35 @@ fun Route.gameStateRoutes() {
             call.respond(GameStateResponse(boosters = boosters, quests = quests, daily = daily))
         }
 
-        post("/{userId}/booster") {
-            val userId = call.parameters["userId"] ?: return@post call.respond(
-                HttpStatusCode.BadRequest, mapOf("error" to "Missing userId")
-            )
-            if (!call.ensureUser(userId)) return@post
+            val principal = call.requireFirebaseUser() ?: return@post
+            if (principal.uid != userId) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Forbidden"))
+                return@post
+            }
             val req = call.receive<UpdateBoosterRequest>()
             dbQuery(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
+                // Ensure user exists to satisfy FK
+                if (Users.selectAll().where { Users.userId eq userId }.count() == 0L) {
+                    Users.insertIgnore {
+                        it[Users.userId] = userId
+                        it[email] = principal.email ?: ""
+                        it[displayName] = principal.name ?: "User"
+                        it[createdAt] = System.currentTimeMillis()
+                        it[updatedAt] = System.currentTimeMillis()
+                        it[lastSyncedAt] = System.currentTimeMillis()
+                        it[currentLevel] = 1
+                        it[totalXp] = 0
+                        it[coins] = 100
+                        it[streakDays] = 0
+                        it[lastStudyDate] = 0
+                        it[longestStreak] = 0
+                        it[wordsLearned] = 0
+                        it[lessonsCompleted] = 0
+                        it[exercisesCompleted] = 0
+                        it[isPremium] = false
+                    }
+                }
+
                 UserBoosters.insertIgnore {
                     it[UserBoosters.userId] = userId
                     it[UserBoosters.boosterKey] = req.boosterKey
@@ -76,9 +100,35 @@ fun Route.gameStateRoutes() {
             val userId = call.parameters["userId"] ?: return@post call.respond(
                 HttpStatusCode.BadRequest, mapOf("error" to "Missing userId")
             )
-            if (!call.ensureUser(userId)) return@post
+            val principal = call.requireFirebaseUser() ?: return@post
+            if (principal.uid != userId) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Forbidden"))
+                return@post
+            }
             val req = call.receive<UpdateQuestRequest>()
             dbQuery(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
+                // Ensure user exists
+                 if (Users.selectAll().where { Users.userId eq userId }.count() == 0L) {
+                    Users.insertIgnore {
+                        it[Users.userId] = userId
+                        it[email] = principal.email ?: ""
+                        it[displayName] = principal.name ?: "User"
+                        it[createdAt] = System.currentTimeMillis()
+                        it[updatedAt] = System.currentTimeMillis()
+                        it[lastSyncedAt] = System.currentTimeMillis()
+                        it[currentLevel] = 1
+                        it[totalXp] = 0
+                        it[coins] = 100
+                        it[streakDays] = 0
+                        it[lastStudyDate] = 0
+                        it[longestStreak] = 0
+                        it[wordsLearned] = 0
+                        it[lessonsCompleted] = 0
+                        it[exercisesCompleted] = 0
+                        it[isPremium] = false
+                    }
+                }
+
                 UserQuests.insertIgnore {
                     it[UserQuests.userId] = userId
                     it[questKey] = req.questKey
@@ -97,9 +147,35 @@ fun Route.gameStateRoutes() {
             val userId = call.parameters["userId"] ?: return@post call.respond(
                 HttpStatusCode.BadRequest, mapOf("error" to "Missing userId")
             )
-            if (!call.ensureUser(userId)) return@post
+            val principal = call.requireFirebaseUser() ?: return@post
+            if (principal.uid != userId) {
+                call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Forbidden"))
+                return@post
+            }
             val req = call.receive<UpdateDailyRequest>()
             dbQuery(transactionIsolation = Connection.TRANSACTION_SERIALIZABLE) {
+                // Ensure user exists
+                 if (Users.selectAll().where { Users.userId eq userId }.count() == 0L) {
+                    Users.insertIgnore {
+                        it[Users.userId] = userId
+                        it[email] = principal.email ?: ""
+                        it[displayName] = principal.name ?: "User"
+                        it[createdAt] = System.currentTimeMillis()
+                        it[updatedAt] = System.currentTimeMillis()
+                        it[lastSyncedAt] = System.currentTimeMillis()
+                        it[currentLevel] = 1
+                        it[totalXp] = 0
+                        it[coins] = 100
+                        it[streakDays] = 0
+                        it[lastStudyDate] = 0
+                        it[longestStreak] = 0
+                        it[wordsLearned] = 0
+                        it[lessonsCompleted] = 0
+                        it[exercisesCompleted] = 0
+                        it[isPremium] = false
+                    }
+                }
+
                 DailyChallenges.insertIgnore {
                     it[DailyChallenges.userId] = userId
                     it[status] = req.status

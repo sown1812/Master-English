@@ -14,7 +14,10 @@ object NetworkModule {
         val client = OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val reqBuilder = chain.request().newBuilder()
-                val token = authManager.getCachedIdToken()
+                // Use cached token or fetch synchronously if missing (avoids 401)
+                val token = authManager.getCachedIdToken() ?: kotlinx.coroutines.runBlocking {
+                    authManager.getIdToken(forceRefresh = false)
+                }
                 token?.let {
                     reqBuilder.addHeader("Authorization", "Bearer $it")
                 }
