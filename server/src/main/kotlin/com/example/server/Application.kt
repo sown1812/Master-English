@@ -77,7 +77,13 @@ fun Application.module() {
 fun main() {
     // Load DB config from env (DB_URL, DB_USER, DB_PASSWORD)
     val cfg = ConfigFactory.load()
-    val dbUrl = System.getenv("DB_URL") ?: cfg.getString("database.url")
+    var dbUrl = System.getenv("DB_URL") ?: cfg.getString("database.url")
+    // Fix for Render/Heroku URLs which don't have jdbc: prefix
+    if (dbUrl.startsWith("postgres://")) {
+        dbUrl = dbUrl.replace("postgres://", "jdbc:postgresql://")
+    } else if (dbUrl.startsWith("postgresql://")) {
+        dbUrl = dbUrl.replace("postgresql://", "jdbc:postgresql://")
+    }
     val dbUser = System.getenv("DB_USER") ?: cfg.getString("database.user")
     val dbPwd  = System.getenv("DB_PASSWORD") ?: cfg.getString("database.password")
     // Run migrations then init pool
