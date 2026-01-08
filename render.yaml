@@ -4,6 +4,7 @@ services:
     name: master-backend-tet2
     runtime: docker
     repo: https://github.com/sown1812/Master-English
+    dockerfilePath: server/Dockerfile
     plan: free
     region: singapore # Optional, but good for latency
     envVars:

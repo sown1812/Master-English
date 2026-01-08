@@ -53,6 +53,10 @@ fun Route.gameStateRoutes() {
             call.respond(GameStateResponse(boosters = boosters, quests = quests, daily = daily))
         }
 
+        post("/{userId}/booster") {
+            val userId = call.parameters["userId"] ?: return@post call.respond(
+                HttpStatusCode.BadRequest, mapOf("error" to "Missing userId")
+            )
             val principal = call.requireFirebaseUser() ?: return@post
             if (principal.uid != userId) {
                 call.respond(HttpStatusCode.Forbidden, mapOf("error" to "Forbidden"))
