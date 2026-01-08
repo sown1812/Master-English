@@ -1,6 +1,7 @@
 # Use a multi-stage build to keep the image small
 FROM gradle:8.5-jdk17 AS build
 WORKDIR /app
+ENV SKIP_ANDROID=true
 COPY . .
 # Build the application shading dependencies into a fat JAR (or distZip/installDist)
 # Build the application shading dependencies into a fat JAR (or distZip/installDist)
