@@ -41,4 +41,6 @@ class NetworkMonitor(context: Context) {
         val caps = connectivityManager.getNetworkCapabilities(network) ?: return false
         return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
     }
+
+    fun isConnectedNow(): Boolean = isCurrentlyConnected()
 }

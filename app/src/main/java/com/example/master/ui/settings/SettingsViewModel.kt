@@ -5,17 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.example.master.auth.AuthManager
 import com.example.master.data.local.NotificationSettingsStore
 import com.example.master.notifications.ReminderScheduler
-import com.example.master.sync.OfflineManager
+import com.example.master.ui.theme.ThemeManager
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 data class SettingsUiState(
     val notificationsEnabled: Boolean = true,
@@ -24,8 +22,6 @@ data class SettingsUiState(
     val darkMode: Boolean = false,
     val reminderEnabled: Boolean = false,
     val reminderTime: String = "20:00",
-    val offlineStatus: String = "",
-    val isOfflineDownloading: Boolean = false,
     val message: String? = null,
     val isProcessing: Boolean = false
 )
@@ -33,7 +29,6 @@ data class SettingsUiState(
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val authManager: AuthManager,
-    private val offlineManager: OfflineManager,
     private val notificationSettingsStore: NotificationSettingsStore,
     private val reminderScheduler: ReminderScheduler
 ) : ViewModel() {
@@ -42,6 +37,7 @@ class SettingsViewModel @Inject constructor(
     val uiState: StateFlow<SettingsUiState> = _uiState.asStateFlow()
 
     init {
+        _uiState.update { it.copy(darkMode = ThemeManager.getDarkModeOverride() ?: false) }
         viewModelScope.launch {
             notificationSettingsStore.settings.collect { settings ->
                 _uiState.update {
@@ -51,11 +47,13 @@ class SettingsViewModel @Inject constructor(
                         reminderTime = settings.reminderTime
                     )
                 }
-                reminderScheduler.updateSchedule(
-                    settings.notificationsEnabled,
-                    settings.reminderEnabled,
-                    settings.reminderTime
-                )
+                runCatching {
+                    reminderScheduler.updateSchedule(
+                        settings.notificationsEnabled,
+                        settings.reminderEnabled,
+                        settings.reminderTime
+                    )
+                }
             }
         }
     }
@@ -76,6 +74,7 @@ class SettingsViewModel @Inject constructor(
 
     fun toggleDarkMode(enabled: Boolean) {
         _uiState.update { it.copy(darkMode = enabled) }
+        ThemeManager.setDarkMode(enabled)
     }
 
     fun toggleReminder(enabled: Boolean) {
@@ -87,19 +86,6 @@ class SettingsViewModel @Inject constructor(
     fun updateReminderTime(time: String) {
         viewModelScope.launch {
             notificationSettingsStore.setReminderTime(time)
-        }
-    }
-
-    fun prefetchOfflineContent() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isOfflineDownloading = true, offlineStatus = "Dang tai noi dung...") }
-            runCatching { withContext(Dispatchers.IO) { offlineManager.prefetchAllLessons() } }
-                .onSuccess {
-                    _uiState.update { it.copy(isOfflineDownloading = false, offlineStatus = "Da tai xong, co the hoc offline") }
-                }
-                .onFailure { e ->
-                    _uiState.update { it.copy(isOfflineDownloading = false, offlineStatus = "Loi khi tai: ${e.message}") }
-                }
         }
     }
 

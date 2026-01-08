@@ -27,6 +27,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
@@ -34,6 +35,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -50,6 +54,7 @@ fun SettingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+    var showLogoutConfirm by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
@@ -65,6 +70,7 @@ fun SettingsScreen(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
+        SectionHeader("Thông báo")
         SettingToggle(
             icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
             title = "Thông báo",
@@ -92,6 +98,14 @@ fun SettingsScreen(
             }
         )
 
+        ReminderCard(
+            enabled = state.reminderEnabled,
+            time = state.reminderTime,
+            onToggle = viewModel::toggleReminder,
+            onTimeChange = viewModel::updateReminderTime
+        )
+
+        SectionHeader("Âm thanh")
         SettingToggle(
             icon = { Icon(Icons.Filled.VolumeUp, contentDescription = null) },
             title = "Âm thanh",
@@ -108,6 +122,7 @@ fun SettingsScreen(
             onCheckedChange = { viewModel.toggleAutoPlay(it) }
         )
 
+        SectionHeader("Giao diện")
         SettingToggle(
             icon = { Icon(Icons.Filled.DarkMode, contentDescription = null) },
             title = "Dark mode",
@@ -116,41 +131,7 @@ fun SettingsScreen(
             onCheckedChange = { viewModel.toggleDarkMode(it) }
         )
 
-        ReminderCard(
-            enabled = state.reminderEnabled,
-            time = state.reminderTime,
-            onToggle = viewModel::toggleReminder,
-            onTimeChange = viewModel::updateReminderTime
-        )
-
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Text("Tải trước để học offline", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                Text(
-                    text = "Lưu bài học và audio về máy, có thể học khi không có mạng.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280)
-                )
-                Button(
-                    onClick = { viewModel.prefetchOfflineContent() },
-                    enabled = !state.isOfflineDownloading,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2563EB))
-                ) {
-                    Text(if (state.isOfflineDownloading) "Đang tải..." else "Tải ngay", color = Color.White)
-                }
-                if (state.offlineStatus.isNotBlank()) {
-                    Text(state.offlineStatus, style = MaterialTheme.typography.bodySmall, color = Color(0xFF0F172A))
-                }
-            }
-        }
-
+        SectionHeader("Tài khoản")
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -168,11 +149,7 @@ fun SettingsScreen(
                 )
                 Button(
                     onClick = {
-                        if (!state.isProcessing) {
-                            viewModel.logout { success ->
-                                if (success) onLoggedOut()
-                            }
-                        }
+                        if (!state.isProcessing) showLogoutConfirm = true
                     },
                     enabled = !state.isProcessing,
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48))
@@ -186,6 +163,35 @@ fun SettingsScreen(
                 }
             }
         }
+    }
+
+    if (showLogoutConfirm) {
+        AlertDialog(
+            onDismissRequest = { showLogoutConfirm = false },
+            title = { Text("Đăng xuất") },
+            text = { Text("Bạn có chắc muốn đăng xuất khỏi tài khoản này?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showLogoutConfirm = false
+                        viewModel.logout { success ->
+                            if (success) onLoggedOut()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE11D48))
+                ) {
+                    Text("Đăng xuất", color = Color.White)
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { showLogoutConfirm = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE5E7EB))
+                ) {
+                    Text("Hủy")
+                }
+            }
+        )
     }
 }
 
@@ -220,6 +226,15 @@ private fun SettingToggle(
             Switch(checked = checked, onCheckedChange = onCheckedChange)
         }
     }
+}
+
+@Composable
+private fun SectionHeader(title: String) {
+    Text(
+        text = title,
+        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+        color = Color(0xFF475569)
+    )
 }
 
 @Composable

@@ -33,11 +33,10 @@ fun MultipleChoiceExercise(
     val displayQuestion = extractQuotedPrompt(exercise.question)
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Question Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -82,7 +81,6 @@ fun MultipleChoiceExercise(
             }
         }
         
-        // Options
         exercise.options.forEach { option ->
             val isSelected = exercise.selectedAnswer == option
             val isCorrectAnswer = option == exercise.correctAnswer
@@ -141,7 +139,6 @@ fun MultipleChoiceExercise(
             }
         }
         
-        // Result Message
         if (showResult && isCorrect != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -167,11 +164,7 @@ fun MultipleChoiceExercise(
                             color = if (isCorrect) Color(0xFF10B981) else Color(0xFFEF4444)
                         )
                         if (!isCorrect) {
-                            Text(
-                                text = "Correct answer: ${exercise.correctAnswer}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF6B7280)
-                            )
+                            CorrectAnswerText(exercise.correctAnswer)
                         }
                     }
                 }

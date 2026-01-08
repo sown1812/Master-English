@@ -4,7 +4,6 @@ import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Path
-import retrofit2.http.Query
 
 interface ApiService {
 
@@ -22,15 +21,6 @@ interface ApiService {
         @Path("userId") userId: String,
         @Body body: UpdateQuestRequest
     )
-
-    @POST("/gamestate/{userId}/daily")
-    suspend fun updateDaily(
-        @Path("userId") userId: String,
-        @Body body: UpdateDailyRequest
-    )
-
-    @GET("/leaderboard")
-    suspend fun getLeaderboard(@Query("limit") limit: Int = 20): List<LeaderboardEntryRemote>
 
     @POST("/sync")
     suspend fun sync(@Body payload: SyncEventsPayloadRemote): SyncResponseRemote

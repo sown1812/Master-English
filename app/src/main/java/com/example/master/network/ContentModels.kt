@@ -66,7 +66,8 @@ fun LessonRemote.toEntity(): LessonEntity = LessonEntity(
     xpReward = xpReward,
     coinsReward = coinsReward,
     isUnlocked = isUnlocked,
-    isPremium = isPremium
+    isPremium = isPremium,
+    levelId = 0
 )
 
 fun WordRemote.toEntity(): WordEntity = WordEntity(

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel,
+    isConnected: Boolean,
     onNavigateToLogin: () -> Unit,
     onRegisterSuccess: () -> Unit
 ) {
@@ -93,6 +94,15 @@ fun RegisterScreen(
                     modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
+                    if (!isConnected) {
+                        Text(
+                            text = "Can internet de tao tai khoan.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFDC2626),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
                     Text(
                         text = "Create Account",
                         style = MaterialTheme.typography.headlineSmall.copy(
@@ -244,7 +254,7 @@ fun RegisterScreen(
                     // Register Button
                     Button(
                         onClick = { viewModel.signUp() },
-                        enabled = !uiState.isLoading,
+                        enabled = isConnected && !uiState.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),

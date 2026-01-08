@@ -9,15 +9,14 @@ data class HomeUiState(
     val coins: Int,
     val streakDays: Int,
     val streakRewardAvailable: Boolean,
-    val nextChallengeCountdown: String,
     val level: Int,
     val difficulty: Difficulty,
     val progress: Float,
     val maxLevel: Int,
     val totalScore: Int,
-    val learningPath: List<LearningPathLesson>,
+    val nextLesson: LessonSummary?,
+    val sections: List<SectionUi>,
     val badges: List<AchievementBadge>,
-    val dailyChallenge: DailyChallenge,
     val quests: List<Quest>,
     val boosters: List<BoosterItem>,
     val themes: List<ThemeOption>
@@ -29,30 +28,53 @@ data class HomeUiState(
             coins = 120,
             streakDays = 1,
             streakRewardAvailable = true,
-            nextChallengeCountdown = "12:45:10",
             level = 1,
             difficulty = Difficulty.EASY,
             progress = 0.05f,
             maxLevel = 20,
             totalScore = 120,
-            learningPath = listOf(
-                LearningPathLesson(
+            nextLesson = LessonSummary(
+                id = 1,
+                title = "Basics 1",
+                description = "Greetings and self-intros",
+                difficulty = "EASY",
+                totalWords = 20,
+                totalExercises = 12,
+                isUnlocked = true,
+                unlockCost = 0
+            ),
+            sections = listOf(
+                SectionUi(
                     id = 1,
-                    title = "Basics 1",
-                    description = "Greetings and self-intros",
-                    difficulty = "EASY",
-                    totalWords = 20,
-                    totalExercises = 12,
-                    isUnlocked = true
-                ),
-                LearningPathLesson(
-                    id = 2,
-                    title = "Basics 2",
-                    description = "Simple people words",
-                    difficulty = "EASY",
-                    totalWords = 12,
-                    totalExercises = 8,
-                    isUnlocked = false
+                    title = "A1 Foundation",
+                    cefrLevel = "A1",
+                    units = listOf(
+                        UnitUi(
+                            id = 1,
+                            title = "Basics",
+                            topic = "basics",
+                            levels = listOf(
+                                LevelUi(
+                                    id = 1,
+                                    order = 1,
+                                    lessonIds = listOf(1),
+                                    status = LevelStatus.COMPLETED,
+                                    lessonTitle = "Basics 1",
+                                    unlockCost = 0,
+                                    isUnlocked = true
+                                ),
+                                LevelUi(
+                                    id = 2,
+                                    order = 2,
+                                    lessonIds = listOf(2),
+                                    status = LevelStatus.AVAILABLE,
+                                    lessonTitle = "Basics 2",
+                                    unlockCost = 50,
+                                    isUnlocked = true
+                                )
+                            )
+                        )
+                    )
                 )
             ),
             badges = listOf(
@@ -61,11 +83,6 @@ data class HomeUiState(
                 AchievementBadge.LanguageLegend(unlocked = false, date = null),
                 AchievementBadge.StreakHero(unlocked = false, date = null),
                 AchievementBadge.PerfectScore(unlocked = false, date = null)
-            ),
-            dailyChallenge = DailyChallenge(
-                title = "Quiz 10 tu vung moi",
-                rewardCoins = 100,
-                isAccepted = false
             ),
             quests = listOf(
                 Quest(
@@ -126,10 +143,24 @@ data class HomeUiState(
                     isSelected = false
                 ),
                 ThemeOption(
-                    name = "Galaxy",
-                    primaryColor = "#4C1D95",
-                    secondaryColor = "#9333EA",
-                    isUnlocked = false,
+                    name = "Forest",
+                    primaryColor = "#2F855A",
+                    secondaryColor = "#68D391",
+                    isUnlocked = true,
+                    isSelected = false
+                ),
+                ThemeOption(
+                    name = "Rose",
+                    primaryColor = "#E11D48",
+                    secondaryColor = "#F472B6",
+                    isUnlocked = true,
+                    isSelected = false
+                ),
+                ThemeOption(
+                    name = "Midnight",
+                    primaryColor = "#4C6FFF",
+                    secondaryColor = "#7C3AED",
+                    isUnlocked = true,
                     isSelected = false
                 )
             )
@@ -169,12 +200,6 @@ sealed class AchievementBadge {
     }
 }
 
-data class DailyChallenge(
-    val title: String,
-    val rewardCoins: Int,
-    val isAccepted: Boolean
-)
-
 data class Quest(
     val title: String,
     val description: String,
@@ -198,12 +223,44 @@ data class ThemeOption(
     val isSelected: Boolean
 )
 
-data class LearningPathLesson(
+data class LessonSummary(
     val id: Int,
     val title: String,
     val description: String,
     val difficulty: String,
     val totalWords: Int,
     val totalExercises: Int,
+    val isUnlocked: Boolean,
+    val unlockCost: Int = 0
+)
+
+data class SectionUi(
+    val id: Int,
+    val title: String,
+    val cefrLevel: String,
+    val units: List<UnitUi>
+)
+
+data class UnitUi(
+    val id: Int,
+    val title: String,
+    val topic: String,
+    val levels: List<LevelUi>
+)
+
+data class LevelUi(
+    val id: Int,
+    val order: Int,
+    val lessonIds: List<Int>,
+    val status: LevelStatus,
+    val lessonTitle: String,
+    val unlockCost: Int,
     val isUnlocked: Boolean
 )
+
+enum class LevelStatus {
+    COMPLETED,
+    IN_PROGRESS,
+    AVAILABLE,
+    LOCKED
+}

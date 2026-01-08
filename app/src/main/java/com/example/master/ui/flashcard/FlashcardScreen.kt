@@ -389,6 +389,12 @@ private fun ActionButtons(
         return
     }
 
+    Text(
+        text = "Chạm thẻ để lật, sau đó chọn trạng thái.",
+        style = MaterialTheme.typography.bodySmall,
+        color = Color(0xFF6B7280)
+    )
+
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(12.dp)

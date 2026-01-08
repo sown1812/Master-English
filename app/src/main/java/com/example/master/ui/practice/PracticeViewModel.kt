@@ -19,7 +19,6 @@ data class PracticeLessonItem(
 
 data class PracticeUiState(
     val isLoading: Boolean = true,
-    val dailyTitle: String = "Thử thách hằng ngày",
     val recommendedLessons: List<PracticeLessonItem> = emptyList()
 )
 
@@ -41,7 +40,6 @@ class PracticeViewModel @Inject constructor(
 
                 _uiState.value = PracticeUiState(
                     isLoading = false,
-                    dailyTitle = "Thử thách hằng ngày",
                     recommendedLessons = rec
                 )
             }

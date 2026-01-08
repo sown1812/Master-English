@@ -26,7 +26,9 @@ data class LessonUiState(
     val showResult: Boolean = false,
     val lastAnswerCorrect: Boolean? = null,
     val feedbackMessage: String? = null,
-    val explanation: String? = null
+    val explanation: String? = null,
+    val hintText: String? = null,
+    val networkError: String? = null
 )
 
 sealed class Exercise {
@@ -73,6 +75,16 @@ sealed class Exercise {
         override val word: WordEntity?,
         override val explanation: String?,
         val userAnswer: String = ""
+    ) : Exercise()
+
+    data class WordTiles(
+        override val id: Int,
+        override val question: String,
+        override val correctAnswer: String,
+        override val word: WordEntity?,
+        override val explanation: String?,
+        val tiles: List<String>,
+        val selectedWords: List<String> = emptyList()
     ) : Exercise()
 
     data class Listening(
@@ -167,6 +179,8 @@ sealed class LessonEvent {
     data class FlashcardRated(val remembered: Boolean) : LessonEvent()
     data class SpeedMatchClueSelected(val clueId: String) : LessonEvent()
     data class SpeedMatchWordSelected(val wordId: String) : LessonEvent()
+    data class WordTileSelected(val word: String) : LessonEvent()
+    data class WordTileRemoved(val index: Int) : LessonEvent()
     object SpeedMatchTick : LessonEvent()
     object SubmitAnswer : LessonEvent()
     object NextExercise : LessonEvent()

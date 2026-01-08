@@ -1,15 +1,18 @@
 ﻿package com.example.master.ui.wordle
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -19,8 +22,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -32,9 +33,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import coil.compose.AsyncImage
 
 @Composable
 fun WordleRoute(
@@ -43,13 +44,9 @@ fun WordleRoute(
     val state by viewModel.uiState.collectAsState()
     WordleScreen(
         state = state,
-        onModeChange = viewModel::onModeChange,
-        onDifficultyChange = viewModel::onDifficultyChange,
-        onTopicChange = viewModel::onTopicChange,
         onKeyPress = viewModel::onKeyPress,
         onBackspace = viewModel::onBackspace,
         onSubmit = viewModel::onSubmitGuess,
-        onUseHint = viewModel::useHint,
         onRestart = viewModel::restartGame
     )
 }
@@ -57,158 +54,66 @@ fun WordleRoute(
 @Composable
 fun WordleScreen(
     state: WordleUiState,
-    onModeChange: (WordleMode) -> Unit,
-    onDifficultyChange: (WordleDifficulty) -> Unit,
-    onTopicChange: (String?) -> Unit,
     onKeyPress: (Char) -> Unit,
     onBackspace: () -> Unit,
     onSubmit: () -> Unit,
-    onUseHint: () -> Unit,
     onRestart: () -> Unit
 ) {
     val scrollState = rememberScrollState()
-
-    Column(
+    Box(
         modifier = Modifier
-            .verticalScroll(scrollState)
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+            .background(Color(0xFF121212))
+            .padding(16.dp)
     ) {
-        Text(
-            text = "Wordle Từ vựng",
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
-        )
-
-        SectionTitle("Chế độ")
-        ChipRow(
-            items = WordleMode.values().toList(),
-            selected = state.mode,
-            onSelected = onModeChange
-        ) { mode ->
-            when (mode) {
-                WordleMode.DAILY -> "Daily"
-                WordleMode.PRACTICE -> "Practice"
-                WordleMode.TOPIC -> "Topic"
-            }
-        }
-
-        SectionTitle("Độ khó")
-        ChipRow(
-            items = WordleDifficulty.values().toList(),
-            selected = state.difficulty,
-            onSelected = onDifficultyChange
-        ) { difficulty ->
-            when (difficulty) {
-                WordleDifficulty.EASY -> "Easy"
-                WordleDifficulty.MEDIUM -> "Medium"
-                WordleDifficulty.HARD -> "Hard"
-            }
-        }
-
-        if (state.mode == WordleMode.TOPIC) {
-            SectionTitle("Chủ đề")
-            TopicRow(
-                topics = state.availableTopics,
-                selected = state.selectedTopic,
-                onSelected = onTopicChange
-            )
-        }
-
-        if (state.mode == WordleMode.DAILY) {
+        Column(
+            modifier = Modifier
+                .verticalScroll(scrollState)
+                .fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
             Text(
-                text = "Streak: ${state.dailyStreak} | Đã chơi hôm nay: ${if (state.dailyCompleted) "Có" else "Chưa"}",
+                text = "Wordle",
+                style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color.White
+            )
+
+            Text(
+                text = "Lượt: ${state.guesses.size}/${state.maxGuesses}",
                 style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF475569)
+                color = Color(0xFF9CA3AF)
             )
-        }
 
-        Board(
-            wordLength = state.wordLength,
-            maxGuesses = state.maxGuesses,
-            guesses = state.guesses,
-            currentGuess = state.currentGuess
-        )
-
-        state.message?.let {
-            Text(it, color = MaterialTheme.colorScheme.error)
-        }
-
-        HintSection(
-            hints = state.hints,
-            hintsAllowed = state.hintsAllowed,
-            onUseHint = onUseHint
-        )
-
-        Keyboard(
-            keyboard = state.keyboard,
-            onKeyPress = onKeyPress,
-            onBackspace = onBackspace,
-            onSubmit = onSubmit
-        )
-
-        if (state.status != WordleStatus.IN_PROGRESS) {
-            ResultCard(state = state, onRestart = onRestart)
-        }
-    }
-}
-
-@Composable
-private fun SectionTitle(text: String) {
-    Text(
-        text = text,
-        style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-        color = Color(0xFF1F2937)
-    )
-}
-
-@Composable
-private fun <T> ChipRow(
-    items: List<T>,
-    selected: T,
-    onSelected: (T) -> Unit,
-    label: (T) -> String
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items.forEach { item ->
-            FilterChip(
-                selected = item == selected,
-                onClick = { onSelected(item) },
-                label = { Text(label(item)) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(0xFF1E293B),
-                    selectedLabelColor = Color.White
-                )
+            Board(
+                wordLength = state.wordLength,
+                maxGuesses = state.maxGuesses,
+                guesses = state.guesses,
+                currentGuess = state.currentGuess
             )
-        }
-    }
-}
 
-@Composable
-private fun TopicRow(
-    topics: List<String>,
-    selected: String?,
-    onSelected: (String?) -> Unit
-) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        FilterChip(
-            selected = selected == null,
-            onClick = { onSelected(null) },
-            label = { Text("Tất cả") },
-            colors = FilterChipDefaults.filterChipColors(
-                selectedContainerColor = Color(0xFF0F766E),
-                selectedLabelColor = Color.White
+            LegendRow()
+
+            if (state.status == WordleStatus.IN_PROGRESS &&
+                state.guesses.size == state.maxGuesses - 1
+            ) {
+                state.hintText?.let {
+                    Text(it, color = Color(0xFFEAB308))
+                }
+            }
+
+            state.message?.let {
+                Text(it, color = Color(0xFFF87171))
+            }
+
+            Keyboard(
+                keyboard = state.keyboard,
+                onKeyPress = onKeyPress,
+                onBackspace = onBackspace,
+                onSubmit = onSubmit
             )
-        )
-        topics.take(6).forEach { topic ->
-            FilterChip(
-                selected = selected == topic,
-                onClick = { onSelected(topic) },
-                label = { Text(topic) },
-                colors = FilterChipDefaults.filterChipColors(
-                    selectedContainerColor = Color(0xFF0F766E),
-                    selectedLabelColor = Color.White
-                )
-            )
+
+            if (state.status != WordleStatus.IN_PROGRESS) {
+                ResultCard(state = state, onRestart = onRestart)
+            }
         }
     }
 }
@@ -230,85 +135,68 @@ private fun Board(
             }
             val results = guess?.results
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
                 repeat(wordLength) { colIndex ->
                     val letter = letters.getOrNull(colIndex)?.toString() ?: ""
                     val state = results?.getOrNull(colIndex)
                     LetterTile(letter = letter, state = state)
+                    if (colIndex < wordLength - 1) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LegendRow() {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        LegendItem(color = Color(0xFF4C8A4B), label = "Đúng vị trí")
+        LegendItem(color = Color(0xFFB59B2B), label = "Có trong từ")
+        LegendItem(color = Color(0xFF3A3A3C), label = "Không có")
+    }
+}
+
+@Composable
+private fun LegendItem(color: Color, label: String) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color, RoundedCornerShape(3.dp))
+        )
+        Text(text = label, style = MaterialTheme.typography.labelSmall, color = Color(0xFF9CA3AF))
     }
 }
 
 @Composable
 private fun LetterTile(letter: String, state: LetterState?) {
     val background = when (state) {
-        LetterState.CORRECT -> Color(0xFF16A34A)
-        LetterState.PRESENT -> Color(0xFFF59E0B)
-        LetterState.ABSENT -> Color(0xFF94A3B8)
-        null -> Color(0xFFE2E8F0)
-        else -> Color(0xFFE2E8F0)
+        LetterState.CORRECT -> Color(0xFF4C8A4B)
+        LetterState.PRESENT -> Color(0xFFB59B2B)
+        LetterState.ABSENT -> Color(0xFF3A3A3C)
+        null -> Color(0xFF121212)
+        else -> Color(0xFF121212)
     }
     Box(
         modifier = Modifier
-            .size(48.dp)
-            .background(background, RoundedCornerShape(8.dp)),
+            .size(52.dp)
+            .background(background, RoundedCornerShape(6.dp))
+            .border(2.dp, Color(0xFF3A3A3C), RoundedCornerShape(6.dp)),
         contentAlignment = Alignment.Center
     ) {
         Text(
             text = letter,
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = if (state == null) Color(0xFF1F2937) else Color.White
+            color = Color.White
         )
-    }
-}
-
-@Composable
-private fun HintSection(
-    hints: List<HintEntry>,
-    hintsAllowed: Int,
-    onUseHint: () -> Unit
-) {
-    Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF8FAFC)),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Gợi ý (${hints.size}/$hintsAllowed)",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold)
-                )
-                Button(
-                    onClick = onUseHint,
-                    enabled = hints.size < hintsAllowed,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0EA5E9))
-                ) {
-                    Text("Dùng hint")
-                }
-            }
-            hints.forEach { hint ->
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Hint ${hint.level}: ${hint.text}")
-                    hint.imageUrl?.let { url ->
-                        AsyncImage(
-                            model = url,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(140.dp)
-                                .background(Color(0xFFE2E8F0), RoundedCornerShape(12.dp))
-                        )
-                    }
-                }
-            }
-        }
     }
 }
 
@@ -320,24 +208,28 @@ private fun Keyboard(
     onSubmit: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        KeyboardRow("QWERTYUIOP", keyboard, onKeyPress)
-        KeyboardRow("ASDFGHJKL", keyboard, onKeyPress)
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
+        KeyboardRow("QWERTYUIOP", keyboard, onKeyPress, modifier = Modifier.fillMaxWidth())
+        KeyboardRow("ASDFGHJKL", keyboard, onKeyPress, modifier = Modifier.fillMaxWidth())
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            KeyboardActionKey(
+                label = "Enter",
                 onClick = onSubmit,
-                modifier = Modifier.height(44.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E293B))
-            ) {
-                Text("Enter", color = Color.White)
-            }
-            KeyboardRow("ZXCVBNM", keyboard, onKeyPress, Modifier.weight(1f))
-            Button(
+                background = Color(0xFF3A3A3C),
+                contentColor = Color.White,
+                width = 64.dp
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            KeyboardRow("ZXCVBNM", keyboard, onKeyPress)
+            Spacer(modifier = Modifier.width(6.dp))
+            KeyboardIconKey(
                 onClick = onBackspace,
-                modifier = Modifier.height(44.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF475569))
-            ) {
-                Icon(Icons.Filled.Backspace, contentDescription = "Backspace", tint = Color.White)
-            }
+                background = Color(0xFF3A3A3C),
+                contentColor = Color.White,
+                width = 52.dp
+            )
         }
     }
 }
@@ -350,34 +242,95 @@ private fun KeyboardRow(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(6.dp)
+        modifier = modifier,
+        horizontalArrangement = Arrangement.Center
     ) {
         letters.forEach { letter ->
             val state = keyboard[letter] ?: LetterState.UNKNOWN
             val color = when (state) {
-                LetterState.CORRECT -> Color(0xFF16A34A)
-                LetterState.PRESENT -> Color(0xFFF59E0B)
-                LetterState.ABSENT -> Color(0xFF94A3B8)
-                else -> Color(0xFFE2E8F0)
+                LetterState.CORRECT -> Color(0xFF4C8A4B)
+                LetterState.PRESENT -> Color(0xFFB59B2B)
+                LetterState.ABSENT -> Color(0xFF3A3A3C)
+                else -> Color(0xFF4B4B4F)
             }
-            Button(
-                onClick = { onKeyPress(letter) },
-                modifier = Modifier
-                    .weight(1f)
-                    .height(44.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = color)
-            ) {
-                Text(letter.toString(), color = if (state == LetterState.UNKNOWN) Color(0xFF1F2937) else Color.White)
+            KeyboardLetterKey(
+                letter = letter,
+                state = state,
+                background = color,
+                onClick = onKeyPress
+            )
+            if (letter != letters.last()) {
+                Spacer(modifier = Modifier.width(6.dp))
             }
         }
     }
 }
 
 @Composable
+private fun KeyboardLetterKey(
+    letter: Char,
+    state: LetterState,
+    background: Color,
+    onClick: (Char) -> Unit
+) {
+    Button(
+        onClick = { onClick(letter) },
+        modifier = Modifier
+            .width(34.dp)
+            .height(44.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = background),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Text(
+            text = letter.toString(),
+            color = Color.White
+        )
+    }
+}
+
+@Composable
+private fun KeyboardActionKey(
+    label: String,
+    onClick: () -> Unit,
+    background: Color,
+    contentColor: Color,
+    width: Dp
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .width(width)
+            .height(44.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = background),
+        contentPadding = PaddingValues(horizontal = 6.dp)
+    ) {
+        Text(label, color = contentColor)
+    }
+}
+
+@Composable
+private fun KeyboardIconKey(
+    onClick: () -> Unit,
+    background: Color,
+    contentColor: Color,
+    width: Dp
+) {
+    Button(
+        onClick = onClick,
+        modifier = Modifier
+            .width(width)
+            .height(44.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = background),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Icon(Icons.Filled.Backspace, contentDescription = "Backspace", tint = contentColor)
+    }
+}
+
+@Composable
 private fun ResultCard(state: WordleUiState, onRestart: () -> Unit) {
     Card(
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFF1F5F9)),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1F1F1F)),
         shape = RoundedCornerShape(16.dp)
     ) {
         Column(
@@ -387,15 +340,28 @@ private fun ResultCard(state: WordleUiState, onRestart: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             val title = if (state.status == WordleStatus.WON) "Chúc mừng!" else "Chưa đúng rồi"
-            Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-            Text("Từ đúng: ${state.solution}", style = MaterialTheme.typography.bodyMedium)
-            state.solutionTranslation?.let { Text("Nghĩa: $it") }
-            state.solutionPronunciation?.let { Text("Phát âm: $it") }
-            state.solutionExample?.takeIf { it.isNotBlank() }?.let { Text("Ví dụ: $it") }
-            state.score?.let { Text("Điểm: $it", fontWeight = FontWeight.Bold) }
+            Text(
+                title,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color.White
+            )
+            Text(
+                "Từ đúng: ${state.solution}",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color(0xFFD1D5DB)
+            )
+            state.solutionTranslation?.takeIf { it.isNotBlank() }?.let {
+                Text("Nghĩa: $it", color = Color(0xFFD1D5DB))
+            }
+            state.solutionExample?.takeIf { it.isNotBlank() }?.let {
+                Text("Ví dụ: $it", color = Color(0xFF9CA3AF))
+            }
             Spacer(modifier = Modifier.height(4.dp))
-            Button(onClick = onRestart) {
-                Text("Chơi mới", textAlign = TextAlign.Center)
+            Button(
+                onClick = onRestart,
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF3A3A3C))
+            ) {
+                Text("Chơi mới", textAlign = TextAlign.Center, color = Color.White)
             }
         }
     }

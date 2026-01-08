@@ -3,12 +3,13 @@
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.master.auth.AuthManager
-import com.example.master.data.local.ChallengeStatus
+import com.example.master.core.network.NetworkMonitor
 import com.example.master.data.local.GameStateStore
+import com.example.master.data.local.PendingShopAction
+import com.example.master.data.local.ShopSyncStore
 import com.example.master.data.repository.LearningRepository
 import com.example.master.network.ApiService
 import com.example.master.network.UpdateBoosterRequest
-import com.example.master.network.UpdateDailyRequest
 import com.example.master.network.UpdateQuestRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -25,7 +26,6 @@ data class StoreUiState(
     val coins: Int = 0,
     val boosters: List<BoosterUi> = emptyList(),
     val quests: List<QuestUi> = emptyList(),
-    val dailyChallenge: DailyChallengeUi = DailyChallengeUi(),
     val message: String? = null
 )
 
@@ -49,23 +49,16 @@ data class QuestUi(
     val isClaimed: Boolean = false
 )
 
-data class DailyChallengeUi(
-    val title: String = "Thử thách hằng ngày",
-    val rewardCoins: Int = 120,
-    val status: ChallengeStatus = ChallengeStatus.READY,
-    val progress: Int = 0,
-    val target: Int = 5
-)
-
 @HiltViewModel
 class StoreViewModel @Inject constructor(
     private val repository: LearningRepository,
     private val authManager: AuthManager,
     private val gameStateStore: GameStateStore,
-    private val api: ApiService
+    private val api: ApiService,
+    private val shopSyncStore: ShopSyncStore,
+    private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
 
-    private val pendingActions = mutableListOf<suspend () -> Unit>()
     private val _uiState = MutableStateFlow(StoreUiState())
     val uiState: StateFlow<StoreUiState> = _uiState.asStateFlow()
 
@@ -101,12 +94,12 @@ class StoreViewModel @Inject constructor(
     )
 
     private val boosterKeyAliases = mapOf(
-        "Hint từ vựng" to "hint_vocab",
-        "Hint t? v?ng" to "hint_vocab",
-        "XP Boost 2x" to "xp_boost_2x",
-        "Bỏ qua câu" to "skip_question",
-        "Skip c?u" to "skip_question",
-        "Streak Freeze" to "streak_freeze"
+        "hint từ vựng" to "hint_vocab",
+        "hint tu vung" to "hint_vocab",
+        "xp boost 2x" to "xp_boost_2x",
+        "bỏ qua câu" to "skip_question",
+        "bo qua cau" to "skip_question",
+        "streak freeze" to "streak_freeze"
     )
 
     private val baseQuests = listOf(
@@ -143,18 +136,19 @@ class StoreViewModel @Inject constructor(
     )
 
     private val questKeyAliases = mapOf(
-        "Mục tiêu hôm nay" to "daily_goal",
-        "Daily Goal" to "daily_goal",
-        "Ôn flashcard" to "flashcard_focus",
-        "?n flashcard" to "flashcard_focus",
-        "Streak tuần" to "weekly_streaker",
-        "Weekly Streaker" to "weekly_streaker"
+        "mục tiêu hôm nay" to "daily_goal",
+        "daily goal" to "daily_goal",
+        "ôn flashcard" to "flashcard_focus",
+        "on flashcard" to "flashcard_focus",
+        "streak tuần" to "weekly_streaker",
+        "weekly streaker" to "weekly_streaker"
     )
 
     init {
         observeUserCoins()
         observeState()
         syncFromRemote()
+        flushPendingShopActions()
     }
 
     private fun observeUserCoins() {
@@ -180,13 +174,7 @@ class StoreViewModel @Inject constructor(
 
     private fun observeState() {
         viewModelScope.launch {
-            combine(
-                gameStateStore.ownedBoosters,
-                gameStateStore.claimedQuests,
-                gameStateStore.dailyState
-            ) { owned, claimed, daily ->
-                Triple(owned, claimed, daily)
-            }.collect { (owned, claimed, daily) ->
+            combine(gameStateStore.ownedBoosters, gameStateStore.claimedQuests) { owned, claimed ->
                 val normalizedOwned = owned.mapTo(mutableSetOf()) { normalizeBoosterKey(it) }
                 val normalizedClaimed = claimed.mapTo(mutableSetOf()) { normalizeQuestKey(it) }
                 val boosters = baseBoosters.map { b ->
@@ -195,37 +183,27 @@ class StoreViewModel @Inject constructor(
                 val quests = baseQuests.map { q ->
                     q.copy(isClaimed = normalizedClaimed.contains(q.key))
                 }
-                val dcState = _uiState.value.dailyChallenge.copy(
-                    status = runCatching { ChallengeStatus.valueOf(daily.status) }
-                        .getOrDefault(ChallengeStatus.READY),
-                    progress = daily.progress
-                )
                 _uiState.update {
                     it.copy(
                         boosters = boosters,
-                        quests = quests,
-                        dailyChallenge = dcState
+                        quests = quests
                     )
                 }
-            }
+            }.collect { }
         }
     }
 
     fun refreshFromRemote() {
         syncFromRemote()
-        flushPending()
+        flushPendingShopActions()
     }
 
     private fun syncFromRemote() {
         viewModelScope.launch {
             val userId = authManager.getCurrentUserId() ?: return@launch
+            if (!networkMonitor.isConnectedNow()) return@launch
 
             runCatching { api.getGameState(userId) }.onSuccess { resp ->
-                gameStateStore.setDailyStatus(
-                    runCatching { ChallengeStatus.valueOf(resp.daily?.status ?: "READY") }
-                        .getOrDefault(ChallengeStatus.READY),
-                    resp.daily?.progress ?: 0
-                )
                 resp.boosters.forEach {
                     if (it.isOwned) gameStateStore.setBoosterOwned(normalizeBoosterKey(it.boosterKey))
                 }
@@ -234,27 +212,38 @@ class StoreViewModel @Inject constructor(
                 }
                 _uiState.update { it.copy(message = null) }
             }.onFailure {
-                _uiState.update { it.copy(message = "Không đồng bộ được state backend (offline?)") }
+                if (networkMonitor.isConnectedNow()) {
+                    _uiState.update { it.copy(message = "Không đồng bộ được state backend") }
+                }
             }
         }
     }
 
-    private fun flushPending() {
-        if (pendingActions.isEmpty()) return
-
+    private fun flushPendingShopActions() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isSyncing = true) }
-            val iterator = pendingActions.iterator()
+            if (!networkMonitor.isConnectedNow()) return@launch
+            val queue = shopSyncStore.getQueue().toMutableList()
+            if (queue.isEmpty()) return@launch
 
-            while (iterator.hasNext()) {
-                val action = iterator.next()
-                runCatching { action() }
-                    .onSuccess { iterator.remove() }
-                    .onFailure {
-                        // giữ lại action để retry lần sau
+            _uiState.update { it.copy(isSyncing = true) }
+            val remaining = mutableListOf<PendingShopAction>()
+
+            queue.forEach { action ->
+                val result = when (action.type) {
+                    "BOOSTER" -> runCatching {
+                        api.updateBooster(action.userId, UpdateBoosterRequest(action.key, action.value))
                     }
+                    "QUEST" -> runCatching {
+                        api.updateQuest(action.userId, UpdateQuestRequest(action.key, action.value))
+                    }
+                    else -> runCatching { Unit }
+                }
+                if (result.isFailure) {
+                    remaining.add(action)
+                }
             }
 
+            shopSyncStore.saveQueue(remaining)
             _uiState.update { it.copy(isSyncing = false) }
         }
     }
@@ -280,10 +269,15 @@ class StoreViewModel @Inject constructor(
         viewModelScope.launch {
             repository.addCoins(userId, -booster.costCoins)
             gameStateStore.setBoosterOwned(booster.key)
-            val action: suspend () -> Unit = {
-                api.updateBooster(userId, UpdateBoosterRequest(booster.key, true))
+            if (networkMonitor.isConnectedNow()) {
+                runCatching {
+                    api.updateBooster(userId, UpdateBoosterRequest(booster.key, true))
+                }.onFailure {
+                    shopSyncStore.enqueue(PendingShopAction(userId, "BOOSTER", booster.key, true))
+                }
+            } else {
+                shopSyncStore.enqueue(PendingShopAction(userId, "BOOSTER", booster.key, true))
             }
-            runCatching { action() }.onFailure { pendingActions.add(action) }
             _uiState.update {
                 it.copy(
                     boosters = it.boosters.map { b ->
@@ -310,8 +304,14 @@ class StoreViewModel @Inject constructor(
         viewModelScope.launch {
             repository.addCoins(userId, quest.rewardCoins)
             gameStateStore.setQuestClaimed(quest.key)
-            val action: suspend () -> Unit = { api.updateQuest(userId, UpdateQuestRequest(quest.key, true)) }
-            runCatching { action() }.onFailure { pendingActions.add(action) }
+            if (networkMonitor.isConnectedNow()) {
+                runCatching { api.updateQuest(userId, UpdateQuestRequest(quest.key, true)) }
+                    .onFailure {
+                        shopSyncStore.enqueue(PendingShopAction(userId, "QUEST", quest.key, true))
+                    }
+            } else {
+                shopSyncStore.enqueue(PendingShopAction(userId, "QUEST", quest.key, true))
+            }
             _uiState.update {
                 it.copy(
                     quests = it.quests.map { q ->
@@ -323,59 +323,17 @@ class StoreViewModel @Inject constructor(
         }
     }
 
-    fun startDailyChallenge() {
-        val target = _uiState.value.dailyChallenge.target
-        _uiState.update {
-            it.copy(
-                dailyChallenge = it.dailyChallenge.copy(status = ChallengeStatus.IN_PROGRESS, progress = 0),
-                message = null
-            )
-        }
-
-        viewModelScope.launch {
-            gameStateStore.setDailyStatus(ChallengeStatus.IN_PROGRESS, 0)
-            authManager.getCurrentUserId()?.let { id ->
-                val action: suspend () -> Unit = {
-                    api.updateDaily(id, UpdateDailyRequest(status = "IN_PROGRESS", progress = 0, target = target))
-                }
-                runCatching { action() }.onFailure { pendingActions.add(action) }
-            }
-        }
-    }
-
-    fun submitDailyChallenge(score: Int) {
-        val userId = authManager.getCurrentUserId() ?: run {
-            _uiState.update { it.copy(message = "Chưa đăng nhập") }
-            return
-        }
-        val dc = _uiState.value.dailyChallenge
-
-        if (dc.status != ChallengeStatus.IN_PROGRESS) {
-            _uiState.update { it.copy(message = "Chưa bắt đầu thử thách") }
-            return
-        }
-
-        viewModelScope.launch {
-            repository.addCoins(userId, dc.rewardCoins)
-            gameStateStore.setDailyStatus(ChallengeStatus.CLAIMED, dc.target)
-            val action: suspend () -> Unit = {
-                api.updateDaily(userId, UpdateDailyRequest(status = "CLAIMED", progress = dc.target, target = dc.target))
-            }
-            runCatching { action() }.onFailure { pendingActions.add(action) }
-            _uiState.update {
-                it.copy(
-                    dailyChallenge = dc.copy(status = ChallengeStatus.CLAIMED, progress = dc.target),
-                    message = "Nhận ${dc.rewardCoins} coins từ thử thách"
-                )
-            }
-        }
-    }
-
     fun clearMessage() {
         _uiState.update { it.copy(message = null) }
     }
 
-    private fun normalizeBoosterKey(key: String): String = boosterKeyAliases[key] ?: key
+    private fun normalizeBoosterKey(rawKey: String): String {
+        val key = rawKey.trim().lowercase()
+        return boosterKeyAliases[key] ?: key
+    }
 
-    private fun normalizeQuestKey(key: String): String = questKeyAliases[key] ?: key
+    private fun normalizeQuestKey(rawKey: String): String {
+        val key = rawKey.trim().lowercase()
+        return questKeyAliases[key] ?: key
+    }
 }

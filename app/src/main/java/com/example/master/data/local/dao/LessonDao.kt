@@ -9,6 +9,9 @@ interface LessonDao {
     
     @Query("SELECT * FROM lessons ORDER BY `order`")
     fun getAllLessons(): Flow<List<LessonEntity>>
+
+    @Query("SELECT * FROM lessons ORDER BY `order`")
+    suspend fun getAllLessonsList(): List<LessonEntity>
     
     @Query("SELECT * FROM lessons WHERE id = :lessonId")
     suspend fun getLessonById(lessonId: Int): LessonEntity?
@@ -21,6 +24,12 @@ interface LessonDao {
     
     @Query("SELECT * FROM lessons WHERE difficulty = :difficulty ORDER BY `order`")
     fun getLessonsByDifficulty(difficulty: String): Flow<List<LessonEntity>>
+
+    @Query("SELECT * FROM lessons WHERE levelId = :levelId ORDER BY `order`")
+    suspend fun getLessonsByLevel(levelId: Int): List<LessonEntity>
+
+    @Query("SELECT * FROM lessons WHERE levelId IN (:levelIds) ORDER BY `order`")
+    suspend fun getLessonsByLevelIds(levelIds: List<Int>): List<LessonEntity>
 
     @Query("SELECT * FROM lessons WHERE id IN (:ids)")
     suspend fun getLessonsByIds(ids: List<Int>): List<LessonEntity>

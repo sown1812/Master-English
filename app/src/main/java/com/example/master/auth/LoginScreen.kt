@@ -34,6 +34,7 @@ import com.example.master.R
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel,
+    isConnected: Boolean,
     onNavigateToRegister: () -> Unit,
     onLoginSuccess: () -> Unit,
     onGoogleSignIn: () -> Unit,
@@ -86,6 +87,55 @@ fun LoginScreen(
                 ) {
                     Spacer(modifier = Modifier.height(8.dp))
 
+                    if (!isConnected) {
+                        Text(
+                            text = "Can internet de dang nhap.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFFDC2626),
+                            textAlign = TextAlign.Center
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    OutlinedButton(
+                        onClick = onGoogleSignIn,
+                        enabled = isConnected && (!uiState.isLoading || (uiState.isLoading && uiState.loginInProgress == AuthFlow.GOOGLE)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        if (uiState.isLoading && uiState.loginInProgress == AuthFlow.GOOGLE) {
+                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                        } else {
+                            Icon(imageVector = Icons.Filled.AccountCircle, contentDescription = null)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.login_continue_google),
+                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                                color = Color(0xFF1F2937)
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                        Text(
+                            text = "Hoặc dùng email",
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF9CA3AF)
+                        )
+                        HorizontalDivider(modifier = Modifier.weight(1f))
+                    }
+
+                    Spacer(modifier = Modifier.height(20.dp))
+
                     OutlinedTextField(
                         value = uiState.email,
                         onValueChange = { viewModel.onEmailChanged(it) },
@@ -134,11 +184,31 @@ fun LoginScreen(
                         shape = RoundedCornerShape(12.dp)
                     )
 
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Text(
+                        text = stringResource(R.string.login_forgot_password),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF6366F1),
+                        modifier = Modifier
+                            .align(Alignment.End)
+                            .clickable(enabled = isConnected) { viewModel.resetPassword() }
+                    )
+
                     uiState.errorMessage?.let {
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
                             text = it,
                             color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                    uiState.successMessage?.let {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Text(
+                            text = it,
+                            color = Color(0xFF16A34A),
                             style = MaterialTheme.typography.bodySmall,
                             textAlign = TextAlign.Center
                         )
@@ -148,7 +218,7 @@ fun LoginScreen(
 
                     Button(
                         onClick = { viewModel.signIn() },
-                        enabled = !uiState.isLoading,
+                        enabled = isConnected && !uiState.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -165,43 +235,11 @@ fun LoginScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Text(
-                        text = stringResource(R.string.login_forgot_password),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color(0xFF6366F1),
-                        modifier = Modifier.clickable { /* TODO */ }
-                    )
-
-                    Spacer(modifier = Modifier.height(24.dp))
-
-                    OutlinedButton(
-                        onClick = onGoogleSignIn,
-                        enabled = !uiState.isLoading || (uiState.isLoading && uiState.loginInProgress == AuthFlow.GOOGLE),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        if (uiState.isLoading && uiState.loginInProgress == AuthFlow.GOOGLE) {
-                            CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                        } else {
-                            Icon(imageVector = Icons.Filled.AccountCircle, contentDescription = null)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = stringResource(R.string.login_continue_google),
-                                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
-                                color = Color(0xFF1F2937)
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
 
                     OutlinedButton(
                         onClick = onAnonymousSignIn,
-                        enabled = !uiState.isLoading,
+                        enabled = isConnected && !uiState.isLoading,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(50.dp),

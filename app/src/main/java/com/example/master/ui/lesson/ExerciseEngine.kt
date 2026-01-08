@@ -35,6 +35,8 @@ class ExerciseEngine {
             is Exercise.Translation -> exercise.userAnswer.trim().equals(
                 exercise.correctAnswer, ignoreCase = true
             )
+            is Exercise.WordTiles -> normalizeText(exercise.selectedWords.joinToString(" ")) ==
+                normalizeText(exercise.correctAnswer)
             is Exercise.Listening -> exercise.selectedAnswer.equals(
                 exercise.correctAnswer, ignoreCase = true
             )
@@ -82,6 +84,15 @@ class ExerciseEngine {
             feedback = feedback,
             explanation = explanation
         )
+    }
+
+    private fun normalizeText(text: String): String {
+        return text
+            .lowercase()
+            .replace(Regex("[^\\p{L}\\p{N}']"), " ")
+            .trim()
+            .split(Regex("\\s+"))
+            .joinToString(" ")
     }
     
     fun calculateAccuracy(correctAnswers: Int, totalAttempts: Int): Float {

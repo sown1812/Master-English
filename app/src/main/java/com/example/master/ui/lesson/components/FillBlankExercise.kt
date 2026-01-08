@@ -3,17 +3,19 @@ package com.example.master.ui.lesson
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.filled.Backspace
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Lightbulb
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -27,11 +29,10 @@ fun FillBlankExercise(
 ) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Question Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -74,7 +75,6 @@ fun FillBlankExercise(
                     }
                 }
                 
-                // Hint if available
                 exercise.hint?.let { hint ->
                     Spacer(modifier = Modifier.height(12.dp))
                     Row(
@@ -97,20 +97,16 @@ fun FillBlankExercise(
             }
         }
         
-        // Answer Input
-        OutlinedTextField(
-            value = exercise.userAnswer,
-            onValueChange = onAnswerChanged,
-            label = { Text("Your answer") },
-            placeholder = { Text("Type your answer here...") },
+        AnswerField(
+            answer = exercise.userAnswer,
+            enabled = !showResult
+        )
+        OnScreenKeyboard(
+            answer = exercise.userAnswer,
             enabled = !showResult,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-            singleLine = true
+            onAnswerChanged = onAnswerChanged
         )
         
-        // Result Message
         if (showResult && isCorrect != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -136,16 +132,139 @@ fun FillBlankExercise(
                             color = if (isCorrect) Color(0xFF10B981) else Color(0xFFEF4444)
                         )
                         if (!isCorrect) {
-                            Text(
-                                text = "Correct answer: ${exercise.correctAnswer}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF6B7280)
-                            )
+                            CorrectAnswerText(exercise.correctAnswer)
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AnswerField(
+    answer: String,
+    enabled: Boolean
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Text(
+                text = "Your answer",
+                style = MaterialTheme.typography.labelMedium,
+                color = Color(0xFF64748B)
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = if (answer.isBlank()) "Tap keyboard below..." else answer,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold),
+                color = if (answer.isBlank()) Color(0xFF94A3B8) else Color(0xFF0F172A)
+            )
+            if (!enabled) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "Answer locked",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color(0xFF94A3B8)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnScreenKeyboard(
+    answer: String,
+    enabled: Boolean,
+    onAnswerChanged: (String) -> Unit
+) {
+    val rows = listOf("QWERTYUIOP", "ASDFGHJKL", "ZXCVBNM")
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        rows.forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center
+            ) {
+                row.forEachIndexed { index, c ->
+                    KeyboardKey(
+                        label = c.toString(),
+                        enabled = enabled,
+                        onClick = {
+                            onAnswerChanged(answer + c.lowercase())
+                        }
+                    )
+                    if (index < row.length - 1) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                    }
+                }
+            }
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center
+        ) {
+            KeyboardKey(
+                label = "Space",
+                enabled = enabled,
+                width = 120.dp,
+                onClick = {
+                    if (answer.isNotEmpty() && !answer.endsWith(" ")) {
+                        onAnswerChanged(answer + " ")
+                    }
+                }
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            KeyboardIconKey(
+                enabled = enabled,
+                onClick = {
+                    if (answer.isNotEmpty()) {
+                        onAnswerChanged(answer.dropLast(1))
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun KeyboardKey(
+    label: String,
+    enabled: Boolean,
+    width: Dp = 34.dp,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .width(width)
+            .height(42.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEF2FF)),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Text(label, color = Color(0xFF1F2937))
+    }
+}
+
+@Composable
+private fun KeyboardIconKey(
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Button(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = Modifier
+            .width(54.dp)
+            .height(42.dp),
+        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFCBD5F5)),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Icon(Icons.Filled.Backspace, contentDescription = null, tint = Color(0xFF1F2937))
     }
 }
 

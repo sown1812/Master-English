@@ -1,9 +1,7 @@
-package com.example.master.ui.lesson
+﻿package com.example.master.ui.lesson
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
@@ -25,8 +23,8 @@ fun MatchingExercise(
 ) {
     var selectedLeft by remember { mutableStateOf<String?>(null) }
     var selectedRight by remember { mutableStateOf<String?>(null) }
+    val rightOptions = remember(exercise.pairs) { exercise.pairs.map { it.right }.shuffled() }
     
-    // Auto-match when both sides are selected
     LaunchedEffect(selectedLeft, selectedRight) {
         if (selectedLeft != null && selectedRight != null) {
             onPairMatched(selectedLeft!!, selectedRight!!)
@@ -37,11 +35,10 @@ fun MatchingExercise(
     
     Column(
         modifier = Modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // Question Card
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
@@ -75,28 +72,28 @@ fun MatchingExercise(
             }
         }
         
-        // Matching Grid
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Left Column (English words)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 exercise.pairs.forEach { pair ->
-                    val isMatched = exercise.selectedPairs[pair.left] != null
+                    val matchedRight = exercise.selectedPairs[pair.left]
+                    val isMatched = matchedRight != null
+                    val isPairCorrect = matchedRight?.let { it == pair.right }
                     val isSelected = selectedLeft == pair.left
                     
                     MatchCard(
                         text = pair.left,
                         isSelected = isSelected,
                         isMatched = isMatched,
-                        isCorrect = if (showResult) exercise.selectedPairs[pair.left] == pair.right else null,
-                        enabled = !showResult && !isMatched,
+                        isCorrect = if (matchedRight != null) isPairCorrect else null,
+                        enabled = !showResult && (!isMatched || isPairCorrect == false),
                         onClick = {
-                            if (!isMatched) {
+                            if (!isMatched || isPairCorrect == false) {
                                 selectedLeft = if (isSelected) null else pair.left
                             }
                         }
@@ -104,26 +101,26 @@ fun MatchingExercise(
                 }
             }
             
-            // Right Column (Vietnamese translations - shuffled)
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                exercise.pairs.map { it.right }.shuffled().forEach { translation ->
+                rightOptions.forEach { translation ->
                     val matchedLeft = exercise.selectedPairs.entries.find { it.value == translation }?.key
                     val isMatched = matchedLeft != null
+                    val isPairCorrect = matchedLeft?.let { left ->
+                        exercise.pairs.find { it.left == left }?.right == translation
+                    }
                     val isSelected = selectedRight == translation
                     
                     MatchCard(
                         text = translation,
                         isSelected = isSelected,
                         isMatched = isMatched,
-                        isCorrect = if (showResult && matchedLeft != null) {
-                            exercise.pairs.find { it.left == matchedLeft }?.right == translation
-                        } else null,
-                        enabled = !showResult && !isMatched,
+                        isCorrect = if (matchedLeft != null) isPairCorrect else null,
+                        enabled = !showResult && (!isMatched || isPairCorrect == false),
                         onClick = {
-                            if (!isMatched) {
+                            if (!isMatched || isPairCorrect == false) {
                                 selectedRight = if (isSelected) null else translation
                             }
                         }
@@ -132,7 +129,6 @@ fun MatchingExercise(
             }
         }
         
-        // Result Message
         if (showResult && isCorrect != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -173,7 +169,6 @@ fun MatchCard(
 ) {
     val backgroundColor = when {
         isCorrect == true -> Color(0xFFDCFCE7)
-        isCorrect == false -> Color(0xFFFEE2E2)
         isMatched -> Color(0xFFE0E7FF)
         isSelected -> Color(0xFFEEF2FF)
         else -> Color.White
@@ -181,7 +176,6 @@ fun MatchCard(
     
     val borderColor = when {
         isCorrect == true -> Color(0xFF10B981)
-        isCorrect == false -> Color(0xFFEF4444)
         isMatched -> Color(0xFF6366F1)
         isSelected -> Color(0xFF6366F1)
         else -> Color(0xFFE5E7EB)

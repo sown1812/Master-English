@@ -12,19 +12,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.EmojiEvents
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.LocalFireDepartment
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.TipsAndUpdates
@@ -33,10 +30,10 @@ import androidx.compose.material.icons.outlined.TaskAlt
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Store
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -50,6 +47,9 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -58,7 +58,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.example.master.R
 
@@ -78,13 +77,12 @@ fun HomeRoute(homeViewModel: HomeViewModel) {
         state = state,
         onFlashcardClick = { homeViewModel.onFlashcardsClicked() },
         onPlayClick = { homeViewModel.onPlayClicked() },
-        onDailyChallengeClick = { homeViewModel.onDailyChallengeClicked() },
-        onOpenAchievements = { homeViewModel.onAchievementsClicked() },
         onOpenStore = { homeViewModel.onStoreClicked() },
         onQuestClick = { homeViewModel.onQuestSelected(it) },
         onBoosterClick = { homeViewModel.onBoosterSelected(it) },
         onThemeClick = { homeViewModel.onThemeSelected(it) },
-        onLessonClick = { homeViewModel.onLessonSelected(it) }
+        onLessonClick = { homeViewModel.onLessonSelected(it) },
+        onUnlockLesson = { homeViewModel.unlockLesson(it) }
     )
 }
 
@@ -94,20 +92,23 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     onFlashcardClick: () -> Unit = {},
     onPlayClick: () -> Unit = {},
-    onDailyChallengeClick: () -> Unit = {},
-    onOpenAchievements: () -> Unit = {},
     onOpenStore: () -> Unit = {},
     onQuestClick: (Quest) -> Unit = {},
     onBoosterClick: (BoosterItem) -> Unit = {},
     onThemeClick: (ThemeOption) -> Unit = {},
-    onLessonClick: (Int) -> Unit = {}
+    onLessonClick: (Int) -> Unit = {},
+    onUnlockLesson: (LessonSummary) -> Unit = {}
 ) {
+    var pendingUnlock by remember { mutableStateOf<LessonSummary?>(null) }
     Box(
         modifier = modifier
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFFFFF3D7), Color(0xFFFFE0F0))
+                    listOf(
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.surface
+                    )
                 )
             )
     ) {
@@ -126,32 +127,72 @@ fun HomeScreen(
                 streakDays = state.streakDays,
                 rewardAvailable = state.streakRewardAvailable
             )
-            HeroCard(
-                level = state.level,
-                difficulty = state.difficulty,
+            NextLessonCard(
+                lesson = state.nextLesson,
                 progress = state.progress,
                 maxLevel = state.maxLevel,
-                onFlashcardClick = onFlashcardClick,
-                onPlayClick = onPlayClick
+                onContinue = { lessonId ->
+                    if (lessonId != null) {
+                        onLessonClick(lessonId)
+                    } else {
+                        onPlayClick()
+                    }
+                },
+                onFlashcardClick = onFlashcardClick
             )
-            LearningPathSection(
-                lessons = state.learningPath,
-                onLessonClick = onLessonClick
-            )
-            DailyChallengeCard(
-                challenge = state.dailyChallenge,
-                countdown = state.nextChallengeCountdown,
-                onClick = onDailyChallengeClick
+            SectionsPathSection(
+                sections = state.sections,
+                onLessonClick = onLessonClick,
+                onLockedLessonClick = { pendingUnlock = it }
             )
             AchievementsSection(
                 totalScore = state.totalScore,
-                badges = state.badges,
-                onSeeAll = onOpenAchievements
+                badges = state.badges
             )
             QuestSection(quests = state.quests, onQuestClick = onQuestClick)
             BoosterCarousel(boosters = state.boosters, onBoosterClick = onBoosterClick)
             ThemeSelector(themes = state.themes, onThemeClick = onThemeClick)
         }
+    }
+
+    pendingUnlock?.let { lesson ->
+        AlertDialog(
+            onDismissRequest = { pendingUnlock = null },
+            title = { Text("Mo khoa bai hoc") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Ban muon mo bai \"${lesson.title}\"?")
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_coin),
+                            contentDescription = null,
+                            tint = Color.Unspecified,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text("Chi phi: ${lesson.unlockCost} coins")
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        onUnlockLesson(lesson)
+                        pendingUnlock = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4C6FFF))
+                ) {
+                    Text("Mo khoa", color = Color.White)
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { pendingUnlock = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE5E7EB))
+                ) {
+                    Text("Huy")
+                }
+            }
+        )
     }
 }
 
@@ -218,17 +259,29 @@ private fun StatusChips(coins: Int, streakDays: Int, rewardAvailable: Boolean) {
             modifier = Modifier.weight(1f),
             title = "Coins",
             value = coins.toString(),
-            icon = Icons.Filled.Star,
-            background = Color(0xFFFFF3B0),
-            accent = Color(0xFFFFD700)
+            icon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_coin),
+                    contentDescription = null,
+                    tint = Color.Unspecified,
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            background = Color(0xFFFFF3B0)
         )
         StatusChip(
             modifier = Modifier.weight(1f),
             title = "Streak",
-            value = "${streakDays} ngÃ y",
-            icon = Icons.Filled.Favorite,
-            background = Color(0xFFFFD8DF),
-            accent = if (rewardAvailable) Color(0xFFFF6B6B) else Color(0xFFB94D5D)
+            value = "${streakDays} ngày",
+            icon = {
+                Icon(
+                    imageVector = Icons.Filled.LocalFireDepartment,
+                    contentDescription = null,
+                    tint = Color(0xFFFF6B6B),
+                    modifier = Modifier.size(28.dp)
+                )
+            },
+            background = Color(0xFFFFD8DF)
         )
     }
 }
@@ -238,9 +291,8 @@ private fun StatusChip(
     modifier: Modifier = Modifier,
     title: String,
     value: String,
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    background: Color,
-    accent: Color
+    icon: @Composable () -> Unit,
+    background: Color
 ) {
     Card(
         modifier = modifier,
@@ -254,12 +306,7 @@ private fun StatusChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Icon(
-                imageVector = icon,
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(28.dp)
-            )
+            icon()
             Column {
                 Text(text = title, style = MaterialTheme.typography.labelMedium, color = Color(0xFF7758A2))
                 Text(
@@ -273,186 +320,255 @@ private fun StatusChip(
 }
 
 @Composable
-private fun HeroCard(
-    level: Int,
-    difficulty: Difficulty,
+private fun NextLessonCard(
+    lesson: LessonSummary?,
     progress: Float,
     maxLevel: Int,
-    onFlashcardClick: () -> Unit,
-    onPlayClick: () -> Unit
+    onContinue: (Int?) -> Unit,
+    onFlashcardClick: () -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(30.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFB7F2))
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFDE7FF))
     ) {
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFFFB7F2))
+                .padding(horizontal = 24.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 28.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
-                DifficultyBadge(difficulty = difficulty)
-                Text(
-                    text = "Level $level",
-                    style = MaterialTheme.typography.headlineMedium.copy(
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFF832B7A)
-                    )
-                )
-                LinearProgressIndicator(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(12.dp)
-                        .clip(RoundedCornerShape(999.dp)),
-                    progress = { progress.coerceIn(0f, 1f) },
-                    trackColor = Color(0xFFFFE6FA),
-                    color = Color(0xFFFA7CDE)
-                )
-                Text(
-                    text = "Tiến độ: ${(progress * maxLevel).toInt()} / $maxLevel cấp độ",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF6E3C72)
-                )
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Button(
-                        onClick = onPlayClick,
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6F91)),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Bắt đầu học", fontWeight = FontWeight.Bold)
-                    }
-                    Button(
-                        onClick = onFlashcardClick,
-                        shape = RoundedCornerShape(50),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4C6FFF)),
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = null)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(text = "Flashcard", fontWeight = FontWeight.Bold)
-                    }
-                }
-            }
-            Icon(
-                painter = painterResource(id = R.drawable.ic_home_black_24dp),
-                contentDescription = null,
-                tint = Color(0x33FFFFFF),
-                modifier = Modifier
-                    .size(180.dp)
-                    .align(Alignment.TopEnd)
-                    .offset(x = 20.dp, y = (-30).dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun LearningPathSection(
-    lessons: List<LearningPathLesson>,
-    onLessonClick: (Int) -> Unit
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Text(
-            text = "Lá»™ trÃ¬nh há»c",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = Color(0xFF442C66)
-        )
-        if (lessons.isEmpty()) {
             Text(
-                text = "ChÆ°a cÃ³ bÃ i há»c. Vui lÃ²ng Ä‘á»“ng bá»™ ná»™i dung.",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF7D63A4)
+                text = "Tiếp tục học",
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFF5B1E6A)
             )
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                lessons.take(6).forEach { lesson ->
-                    LearningPathCard(lesson = lesson, onClick = { onLessonClick(lesson.id) })
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun LearningPathCard(
-    lesson: LearningPathLesson,
-    onClick: () -> Unit
-) {
-    val isLocked = !lesson.isUnlocked
-    val cardColor = if (isLocked) Color(0xFFF1F5F9) else Color(0xFFFDF2FF)
-    val tagColor = when (lesson.difficulty.uppercase()) {
-        "HARD" -> Color(0xFFEF4444)
-        "MEDIUM" -> Color(0xFFF59E0B)
-        else -> Color(0xFF10B981)
-    }
-
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable(enabled = !isLocked) { onClick() }
-                .padding(horizontal = 18.dp, vertical = 16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (lesson != null) {
                 Text(
                     text = lesson.title,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                    color = Color(0xFF1F2937),
+                    style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
+                    color = Color(0xFF4A1D57),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = lesson.description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B4A78),
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    DifficultyPill(text = lesson.difficulty, color = tagColor)
-                    Text(
-                        text = "${lesson.totalWords} tá»« â€¢ ${lesson.totalExercises} bÃ i",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = Color(0xFF6B7280)
+                Text(
+                    text = "${lesson.totalWords} từ • ${lesson.totalExercises} bài",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF6B4A78)
+                )
+            } else {
+                Text(
+                    text = "Chưa có bài học phù hợp.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B4A78)
+                )
+            }
+            LinearProgressIndicator(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(10.dp)
+                    .clip(RoundedCornerShape(999.dp)),
+                progress = { progress.coerceIn(0f, 1f) },
+                trackColor = Color(0xFFF6DDF8),
+                color = Color(0xFFB83EA5)
+            )
+            Text(
+                text = "Tiến độ tổng: ${(progress * maxLevel).toInt()} / $maxLevel bài",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF6B4A78)
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    onClick = { onContinue(lesson?.id) },
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFB83EA5)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(imageVector = Icons.Filled.PlayArrow, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "Học tiếp", fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick = onFlashcardClick,
+                    shape = RoundedCornerShape(50),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4C6FFF)),
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Icon(imageVector = Icons.Filled.AutoAwesome, contentDescription = null)
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text(text = "Flashcard", fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionsPathSection(
+    sections: List<SectionUi>,
+    onLessonClick: (Int) -> Unit,
+    onLockedLessonClick: (LessonSummary) -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Lộ trình học",
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+            color = Color(0xFF442C66)
+        )
+        if (sections.isEmpty()) {
+            Text(
+                text = "Chưa có bài học. Vui lòng đồng bộ nội dung.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF7D63A4)
+            )
+        } else {
+            sections.forEach { section ->
+                SectionCard(
+                    section = section,
+                    onLessonClick = onLessonClick,
+                    onLockedLessonClick = onLockedLessonClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SectionCard(
+    section: SectionUi,
+    onLessonClick: (Int) -> Unit,
+    onLockedLessonClick: (LessonSummary) -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = section.title,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFF1F2937)
+            )
+            Surface(
+                shape = RoundedCornerShape(50),
+                color = Color(0xFFF3E8FF)
+            ) {
+                Text(
+                    text = section.cefrLevel,
+                    style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.Bold),
+                    color = Color(0xFF6D28D9),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+                )
+            }
+        }
+        section.units.forEach { unit ->
+            UnitLevelsCard(
+                unit = unit,
+                onLessonClick = onLessonClick,
+                onLockedLessonClick = onLockedLessonClick
+            )
+        }
+    }
+}
+
+@Composable
+private fun UnitLevelsCard(
+    unit: UnitUi,
+    onLessonClick: (Int) -> Unit,
+    onLockedLessonClick: (LessonSummary) -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = unit.title,
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFF1F2937)
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                unit.levels.forEach { level ->
+                    LevelCircle(
+                        level = level,
+                        onLessonClick = onLessonClick,
+                        onLockedLessonClick = onLockedLessonClick
                     )
                 }
             }
-            if (isLocked) {
-                Icon(
-                    imageVector = Icons.Filled.Lock,
-                    contentDescription = null,
-                    tint = Color(0xFF94A3B8),
-                    modifier = Modifier.size(22.dp)
-                )
-            } else {
-                Icon(
-                    imageVector = Icons.Filled.PlayArrow,
-                    contentDescription = null,
-                    tint = Color(0xFF7C3AED),
-                    modifier = Modifier.size(22.dp)
-                )
-            }
+        }
+    }
+}
+
+@Composable
+private fun LevelCircle(
+    level: LevelUi,
+    onLessonClick: (Int) -> Unit,
+    onLockedLessonClick: (LessonSummary) -> Unit
+) {
+    val (bg, fg) = when (level.status) {
+        LevelStatus.COMPLETED -> Color(0xFFFBBF24) to Color.White
+        LevelStatus.IN_PROGRESS -> Color(0xFF10B981) to Color.White
+        LevelStatus.AVAILABLE -> Color(0xFF10B981) to Color.White
+        LevelStatus.LOCKED -> Color(0xFFE5E7EB) to Color(0xFF94A3B8)
+    }
+    val enabled = level.status != LevelStatus.LOCKED
+    val lessonId = level.lessonIds.firstOrNull()
+
+    Surface(
+        modifier = Modifier
+            .size(42.dp)
+            .clickable(enabled = lessonId != null) {
+                if (lessonId == null) return@clickable
+                if (level.status == LevelStatus.LOCKED && !level.isUnlocked) {
+                    onLockedLessonClick(
+                        LessonSummary(
+                            id = lessonId,
+                            title = level.lessonTitle,
+                            description = "",
+                            difficulty = "EASY",
+                            totalWords = 0,
+                            totalExercises = 0,
+                            isUnlocked = false,
+                            unlockCost = level.unlockCost
+                        )
+                    )
+                } else {
+                    onLessonClick(lessonId)
+                }
+            },
+        shape = RoundedCornerShape(999.dp),
+        color = bg
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = level.order.toString(),
+                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                color = fg
+            )
         }
     }
 }
@@ -469,84 +585,9 @@ private fun DifficultyPill(text: String, color: Color) {
     }
 }
 @Composable
-private fun DifficultyBadge(difficulty: Difficulty) {
-    Surface(
-        shape = RoundedCornerShape(24.dp),
-        color = Color(android.graphics.Color.parseColor(difficulty.colorHex)),
-        tonalElevation = 6.dp
-    ) {
-        Text(
-            text = difficulty.label,
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-        )
-    }
-}
-
-@Composable
-private fun DailyChallengeCard(
-    challenge: DailyChallenge,
-    countdown: String,
-    onClick: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFFEDF3FF))
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    imageVector = Icons.Filled.CalendarMonth,
-                    contentDescription = null,
-                    tint = Color(0xFF4C6FFF),
-                    modifier = Modifier.size(26.dp)
-                )
-                Spacer(modifier = Modifier.width(12.dp))
-                Column {
-                    Text(
-                        text = "Daily Challenge",
-                        style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                        color = Color(0xFF34418E)
-                    )
-                    Text(
-                        text = "Háº¿t háº¡n sau $countdown",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF7381C8)
-                    )
-                }
-            }
-            Text(
-                text = challenge.title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-                color = Color(0xFF34418E)
-            )
-            Text(
-                text = "+${challenge.rewardCoins} coins",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFFFF8C42)
-            )
-            Button(
-                onClick = onClick,
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4C6FFF))
-            ) {
-                Text(text = if (challenge.isAccepted) "Tiáº¿p tá»¥c" else "Nháº­n thá»­ thÃ¡ch", fontWeight = FontWeight.Bold)
-            }
-        }
-    }
-}
-
-@Composable
 private fun AchievementsSection(
     totalScore: Int,
-    badges: List<AchievementBadge>,
-    onSeeAll: () -> Unit
+    badges: List<AchievementBadge>
 ) {
     Column(
         modifier = Modifier.fillMaxWidth(),
@@ -559,32 +600,33 @@ private fun AchievementsSection(
         ) {
             Column {
                 Text(
-                    text = "ThÃ nh tÃ­ch",
+                    text = "Thành tích",
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                     color = Color(0xFF442C66)
                 )
                 Text(
-                    text = "Tá»•ng Ä‘iá»ƒm: $totalScore",
+                    text = "Tổng điểm: $totalScore",
                     style = MaterialTheme.typography.bodySmall,
                     color = Color(0xFF7D63A4)
                 )
             }
-            Button(
-                onClick = onSeeAll,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF6F91))
-            ) {
-                Text(text = "Xem táº¥t cáº£", fontWeight = FontWeight.Bold)
-            }
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            badges.forEach { badge ->
-                AchievementChip(badge = badge)
+        if (badges.isEmpty()) {
+            Text(
+                text = "Hoàn thành bài học để nhận huy hiệu đầu tiên.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF7D63A4)
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                badges.forEach { badge ->
+                    AchievementChip(badge = badge)
+                }
             }
         }
     }
@@ -620,13 +662,13 @@ private fun AchievementChip(badge: AchievementBadge) {
         }
         if (badge.unlocked) {
             Text(
-                text = "Äáº¡t Ä‘Æ°á»£c: ${badge.date}",
+                text = "Đạt được: ${badge.date}",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color(0xFF9869D1)
             )
         } else {
             Text(
-                text = "ChÆ°a má»Ÿ khÃ³a",
+                text = "Chưa mở khóa",
                 style = MaterialTheme.typography.labelSmall,
                 color = Color(0xFFA38CCB)
             )
@@ -641,13 +683,21 @@ private fun QuestSection(quests: List<Quest>, onQuestClick: (Quest) -> Unit) {
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Quests hÃ´m nay",
+            text = "Quests hôm nay",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color(0xFF442C66)
         )
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            quests.forEach { quest ->
-                QuestCard(quest = quest, onClick = { onQuestClick(quest) })
+        if (quests.isEmpty()) {
+            Text(
+                text = "Chưa có nhiệm vụ mới. Học bài để mở khóa.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF7D63A4)
+            )
+        } else {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                quests.forEach { quest ->
+                    QuestCard(quest = quest, onClick = { onQuestClick(quest) })
+                }
             }
         }
     }
@@ -700,7 +750,7 @@ private fun QuestCard(quest: Quest, onClick: () -> Unit) {
                 color = Color(0xFFB197F5)
             )
             Text(
-                text = "Tiáº¿n Ä‘á»™: ${quest.stepsLabel}",
+                text = "Tiến độ: ${quest.stepsLabel}",
                 style = MaterialTheme.typography.labelMedium,
                 color = Color(0xFF6C41A1)
             )
@@ -720,9 +770,9 @@ private fun RewardChip(value: Int) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Filled.Star,
+                painter = painterResource(id = R.drawable.ic_coin),
                 contentDescription = null,
-                tint = Color(0xFFFFC857),
+                tint = Color.Unspecified,
                 modifier = Modifier.size(18.dp)
             )
             Text(
@@ -757,14 +807,22 @@ private fun BoosterCarousel(boosters: List<BoosterItem>, onBoosterClick: (Booste
                 modifier = Modifier.size(20.dp)
             )
         }
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            boosters.forEach { booster ->
-                BoosterCard(booster = booster, onClick = { onBoosterClick(booster) })
+        if (boosters.isEmpty()) {
+            Text(
+                text = "Chưa có booster mới. Ghé shop để xem ưu đãi.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF7D63A4)
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                boosters.forEach { booster ->
+                    BoosterCard(booster = booster, onClick = { onBoosterClick(booster) })
+                }
             }
         }
     }
@@ -809,7 +867,7 @@ private fun BoosterCard(booster: BoosterItem, onClick: () -> Unit) {
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
-                    text = if (booster.isOwned) "ÄÃ£ sá»Ÿ há»¯u" else "${booster.costCoins} coins",
+                    text = if (booster.isOwned) "Đã sở hữu" else "${booster.costCoins} coins",
                     style = MaterialTheme.typography.labelMedium,
                     color = accentColor,
                     fontWeight = FontWeight.Bold
@@ -824,7 +882,7 @@ private fun BoosterCard(booster: BoosterItem, onClick: () -> Unit) {
                     )
                 ) {
                     Text(
-                        text = if (booster.isOwned) "Äang dÃ¹ng" else "Mua",
+                        text = if (booster.isOwned) "Đang dùng" else "Mua",
                         color = if (booster.isOwned) Color.White.copy(alpha = 0.6f) else Color.White,
                         fontWeight = FontWeight.Bold
                     )
@@ -841,18 +899,26 @@ private fun ThemeSelector(themes: List<ThemeOption>, onThemeClick: (ThemeOption)
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(
-            text = "Giao diá»‡n",
+            text = "Giao diện",
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color(0xFF442C66)
         )
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(14.dp)
-        ) {
-            themes.forEach { theme ->
-                ThemeCard(theme = theme, onClick = { onThemeClick(theme) })
+        if (themes.isEmpty()) {
+            Text(
+                text = "Chưa có giao diện mới.",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color(0xFF7D63A4)
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(14.dp)
+            ) {
+                themes.forEach { theme ->
+                    ThemeCard(theme = theme, onClick = { onThemeClick(theme) })
+                }
             }
         }
     }
@@ -900,7 +966,7 @@ private fun ThemeCard(theme: ThemeOption, onClick: () -> Unit) {
                 }
             }
             Text(
-                text = if (theme.isUnlocked) "${if (theme.isSelected) "Äang chá»n" else "ÄÃ£ má»Ÿ khÃ³a"}" else "Cáº§n 500 coins",
+                text = if (theme.isUnlocked) "${if (theme.isSelected) "Đang chọn" else "Đã mở khóa"}" else "Cần 500 coins",
                 style = MaterialTheme.typography.labelMedium,
                 color = if (theme.isSelected) Color(0xFF2ECC71) else Color(0xFF7D63A4)
             )
@@ -922,7 +988,7 @@ private fun ThemeCard(theme: ThemeOption, onClick: () -> Unit) {
                 )
                 Spacer(modifier = Modifier.width(6.dp))
                 Text(
-                    text = if (theme.isSelected) "Äang dÃ¹ng" else "Ãp dá»¥ng",
+                    text = if (theme.isSelected) "Đang dùng" else "Áp dụng",
                     fontWeight = FontWeight.Bold
                 )
             }
@@ -1026,8 +1092,3 @@ private fun PrimaryNavFab(item: NavItem) {
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun HomeScreenPreview() {
-    HomeScreen(state = HomeUiState.sample())
-}

@@ -2,33 +2,25 @@
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.example.master.data.local.WordleStateStore
 import com.example.master.data.repository.LearningRepository
 import com.example.master.data.local.entity.WordEntity
 import com.example.master.network.ApiService
 import com.example.master.network.toEntity
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import dagger.hilt.android.lifecycle.HiltViewModel
-import java.time.LocalDate
-import java.time.ZoneId
 import javax.inject.Inject
-import kotlin.math.abs
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
 
-enum class WordleMode { DAILY, PRACTICE, TOPIC }
-
-enum class WordleDifficulty(
-    val lengthRange: IntRange,
-    val maxGuesses: Int,
-    val hintsAllowed: Int
-) {
-    EASY(4..5, 7, 2),
-    MEDIUM(5..6, 6, 1),
-    HARD(6..7, 5, 0)
-}
+enum class WordleMode { PRACTICE }
 
 enum class LetterState { UNKNOWN, ABSENT, PRESENT, CORRECT }
 
@@ -39,40 +31,28 @@ data class GuessResult(
     val results: List<LetterState>
 )
 
-data class HintEntry(
-    val level: Int,
-    val text: String,
-    val imageUrl: String? = null,
-    val cost: Int = 20
-)
-
 data class WordleUiState(
     val mode: WordleMode = WordleMode.PRACTICE,
-    val difficulty: WordleDifficulty = WordleDifficulty.MEDIUM,
-    val availableTopics: List<String> = emptyList(),
-    val selectedTopic: String? = null,
-    val wordLength: Int = 5,
-    val maxGuesses: Int = 6,
+    val wordLength: Int = WORDLE_LENGTH,
+    val maxGuesses: Int = 5,
     val currentGuess: String = "",
     val guesses: List<GuessResult> = emptyList(),
     val keyboard: Map<Char, LetterState> = emptyMap(),
     val status: WordleStatus = WordleStatus.IN_PROGRESS,
     val message: String? = null,
-    val hints: List<HintEntry> = emptyList(),
-    val hintsAllowed: Int = 1,
-    val score: Int? = null,
+    val isValidating: Boolean = false,
     val solution: String? = null,
     val solutionTranslation: String? = null,
     val solutionExample: String? = null,
     val solutionPronunciation: String? = null,
-    val dailyStreak: Int = 0,
-    val dailyCompleted: Boolean = false
+    val hintText: String? = null
 )
+
+private const val WORDLE_LENGTH = 5
 
 @HiltViewModel
 class WordleViewModel @Inject constructor(
     private val repository: LearningRepository,
-    private val wordleStateStore: WordleStateStore,
     private val api: ApiService
 ) : ViewModel() {
 
@@ -83,6 +63,8 @@ class WordleViewModel @Inject constructor(
     private var targetEntity: WordEntity? = null
     private var validWords: Set<String> = emptySet()
     private var allWords: List<WordEntity> = emptyList()
+    private val httpClient = OkHttpClient()
+    private val gson = Gson()
 
     init {
         viewModelScope.launch {
@@ -91,24 +73,8 @@ class WordleViewModel @Inject constructor(
                 if (allWords.isEmpty()) {
                     allWords = defaultWordBank()
                 }
-                val topics = words.mapNotNull { it.category.takeIf { c -> c.isNotBlank() } }
-                    .distinct()
-                    .sorted()
-                _uiState.update { it.copy(availableTopics = topics) }
                 if (targetWord.isBlank()) {
-                    startNewGame()
-                }
-            }
-        }
-
-        viewModelScope.launch {
-            wordleStateStore.dailyState.collect { daily ->
-                val today = currentEpochDay()
-                _uiState.update {
-                    it.copy(
-                        dailyStreak = daily.streak,
-                        dailyCompleted = daily.lastPlayedDay == today
-                    )
+                    startNewGame(force = true)
                 }
             }
         }
@@ -116,27 +82,6 @@ class WordleViewModel @Inject constructor(
         viewModelScope.launch {
             fetchRemoteWords()
         }
-    }
-
-    fun onModeChange(mode: WordleMode) {
-        _uiState.update { it.copy(mode = mode, selectedTopic = if (mode == WordleMode.TOPIC) it.selectedTopic else null) }
-        startNewGame()
-    }
-
-    fun onDifficultyChange(difficulty: WordleDifficulty) {
-        _uiState.update {
-            it.copy(
-                difficulty = difficulty,
-                maxGuesses = difficulty.maxGuesses,
-                hintsAllowed = difficulty.hintsAllowed
-            )
-        }
-        startNewGame()
-    }
-
-    fun onTopicChange(topic: String?) {
-        _uiState.update { it.copy(selectedTopic = topic) }
-        startNewGame()
     }
 
     fun onKeyPress(letter: Char) {
@@ -157,81 +102,75 @@ class WordleViewModel @Inject constructor(
     fun onSubmitGuess() {
         val state = _uiState.value
         if (state.status != WordleStatus.IN_PROGRESS) return
+        if (state.isValidating) return
         val guess = state.currentGuess.trim().uppercase()
         if (guess.length != state.wordLength) {
             _uiState.update { it.copy(message = "Chưa đủ ký tự") }
             return
         }
-        if (!validWords.contains(guess)) {
-            _uiState.update { it.copy(message = "Từ không hợp lệ") }
-            return
-        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isValidating = true, message = null) }
+            val isEnglish = checkEnglishWord(guess.lowercase())
+            if (!isEnglish) {
+                _uiState.update { it.copy(message = "Từ không hợp lệ", isValidating = false) }
+                return@launch
+            }
 
-        val results = evaluateGuess(guess, targetWord)
-        val updatedKeyboard = updateKeyboard(state.keyboard, guess, results)
-        val newGuesses = state.guesses + GuessResult(guess, results)
+            val results = evaluateGuess(guess, targetWord)
+            val updatedKeyboard = updateKeyboard(state.keyboard, guess, results)
+            val newGuesses = state.guesses + GuessResult(guess, results)
 
-        val won = guess == targetWord
-        val lost = !won && newGuesses.size >= state.maxGuesses
+            val won = guess == targetWord
+            val lost = !won && newGuesses.size >= state.maxGuesses
 
-        val nextStatus = when {
-            won -> WordleStatus.WON
-            lost -> WordleStatus.LOST
-            else -> WordleStatus.IN_PROGRESS
-        }
+            val nextStatus = when {
+                won -> WordleStatus.WON
+                lost -> WordleStatus.LOST
+                else -> WordleStatus.IN_PROGRESS
+            }
 
-        _uiState.update {
-            it.copy(
-                guesses = newGuesses,
-                currentGuess = "",
-                keyboard = updatedKeyboard,
-                status = nextStatus,
-                message = null,
-                solution = if (nextStatus != WordleStatus.IN_PROGRESS) targetWord else null,
-                solutionTranslation = if (nextStatus != WordleStatus.IN_PROGRESS) targetEntity?.translation else null,
-                solutionExample = if (nextStatus != WordleStatus.IN_PROGRESS) targetEntity?.exampleSentence else null,
-                solutionPronunciation = if (nextStatus != WordleStatus.IN_PROGRESS) targetEntity?.pronunciation else null
-            )
-        }
-
-        if (nextStatus != WordleStatus.IN_PROGRESS && state.mode == WordleMode.DAILY) {
-            viewModelScope.launch {
-                wordleStateStore.updateDailyResult(currentEpochDay(), nextStatus == WordleStatus.WON)
+            _uiState.update {
+                it.copy(
+                    guesses = newGuesses,
+                    currentGuess = "",
+                    keyboard = updatedKeyboard,
+                    status = nextStatus,
+                    message = null,
+                    isValidating = false,
+                    solution = if (nextStatus != WordleStatus.IN_PROGRESS) targetWord else null,
+                    solutionTranslation = if (nextStatus != WordleStatus.IN_PROGRESS) targetEntity?.translation else null,
+                    solutionExample = if (nextStatus != WordleStatus.IN_PROGRESS) targetEntity?.exampleSentence else null,
+                    solutionPronunciation = if (nextStatus != WordleStatus.IN_PROGRESS) targetEntity?.pronunciation else null,
+                    hintText = if (nextStatus == WordleStatus.IN_PROGRESS) {
+                        buildLetterHint(newGuesses)
+                    } else {
+                        null
+                    }
+                )
             }
         }
-
-        if (nextStatus == WordleStatus.WON) {
-            val score = calculateScore(newGuesses.size, state.hints.size, state.mode, state.dailyStreak)
-            _uiState.update { it.copy(score = score) }
-        }
-    }
-
-    fun useHint() {
-        val state = _uiState.value
-        if (state.status != WordleStatus.IN_PROGRESS) return
-        if (state.hints.size >= state.hintsAllowed) {
-            _uiState.update { it.copy(message = "Bạn đã dùng hết hint") }
-            return
-        }
-        val hint = buildHint(state.hints.size + 1, targetEntity)
-        _uiState.update { it.copy(hints = it.hints + hint, message = null) }
     }
 
     fun restartGame() {
-        startNewGame()
+        startNewGame(force = true)
     }
 
-    private fun startNewGame() {
+    private fun startNewGame(force: Boolean = false) {
         if (allWords.isEmpty()) {
             _uiState.update { it.copy(message = "Không có dữ liệu Wordle, hãy thử lại khi có mạng.") }
             return
         }
+        if (!force) {
+            val state = _uiState.value
+            val inProgress = state.status == WordleStatus.IN_PROGRESS
+            val hasGuesses = state.guesses.isNotEmpty() || state.currentGuess.isNotEmpty()
+            if (inProgress && hasGuesses) {
+                return
+            }
+        }
         val state = _uiState.value
-        val difficulty = state.difficulty
-        val mode = state.mode
-        val topic = state.selectedTopic
 
-        val selected = selectTarget(allWords, mode, difficulty, topic)
+        val selected = selectTarget(allWords)
         if (selected == null) {
             _uiState.update { it.copy(message = "Không tìm thấy từ phù hợp") }
             return
@@ -240,78 +179,69 @@ class WordleViewModel @Inject constructor(
         targetEntity = selected
         targetWord = selected.word.uppercase()
 
-        val wordLength = targetWord.length
-        validWords = buildValidSet(allWords, mode, difficulty, topic, wordLength)
+        validWords = buildValidSet(allWords, WORDLE_LENGTH)
 
         _uiState.update {
             it.copy(
-                wordLength = wordLength,
-                maxGuesses = difficulty.maxGuesses,
+                wordLength = WORDLE_LENGTH,
+                maxGuesses = 5,
                 currentGuess = "",
                 guesses = emptyList(),
                 keyboard = defaultKeyboard(),
                 status = WordleStatus.IN_PROGRESS,
                 message = null,
-                hints = emptyList(),
-                hintsAllowed = difficulty.hintsAllowed,
-                score = null,
+                isValidating = false,
                 solution = null,
                 solutionTranslation = null,
                 solutionExample = null,
-                solutionPronunciation = null
+                solutionPronunciation = null,
+                hintText = null
             )
         }
     }
 
-    private fun selectTarget(
-        words: List<WordEntity>,
-        mode: WordleMode,
-        difficulty: WordleDifficulty,
-        topic: String?
-    ): WordEntity? {
-        val filtered = words.filter { w ->
-            isValidWord(w.word) &&
-                w.word.length in difficulty.lengthRange &&
-                (topic == null || w.category == topic)
-        }
-        if (filtered.isEmpty()) return null
-
-        val lengths = filtered.map { it.word.length }.distinct().sorted()
-        val chosenLength = when (mode) {
-            WordleMode.DAILY -> {
-                val seed = buildDailySeed(difficulty, topic)
-                lengths[abs(seed) % lengths.size]
+    private fun buildLetterHint(guesses: List<GuessResult>): String? {
+        if (targetWord.isBlank()) return null
+        val revealed = BooleanArray(targetWord.length)
+        guesses.forEach { guess ->
+            guess.results.forEachIndexed { index, state ->
+                if (state == LetterState.CORRECT) {
+                    revealed[index] = true
+                }
             }
-            else -> lengths.random()
         }
-
-        val candidates = filtered.filter { it.word.length == chosenLength }
-        return when (mode) {
-            WordleMode.DAILY -> {
-                val seed = buildDailySeed(difficulty, topic)
-                val index = abs(seed / 7) % candidates.size
-                candidates[index]
-            }
-            else -> candidates.random()
-        }
+        val hiddenIndex = revealed.indexOfFirst { !it }
+        if (hiddenIndex == -1 || hiddenIndex >= targetWord.length) return null
+        val letter = targetWord[hiddenIndex]
+        return "Gợi ý: chữ cái ở vị trí ${hiddenIndex + 1} là '$letter'"
     }
 
-    private fun buildValidSet(
-        words: List<WordEntity>,
-        mode: WordleMode,
-        difficulty: WordleDifficulty,
-        topic: String?,
-        wordLength: Int
-    ): Set<String> {
+    private fun selectTarget(
+        words: List<WordEntity>
+    ): WordEntity? {
+        val filtered = words.filter { w ->
+            isValidWord(w.word) && w.word.length == WORDLE_LENGTH
+        }
+        if (filtered.isEmpty()) return null
+        return filtered.random()
+    }
+
+    private fun buildValidSet(words: List<WordEntity>, wordLength: Int): Set<String> {
         return words.filter { w ->
-            isValidWord(w.word) &&
-                w.word.length == wordLength &&
-                w.word.length in difficulty.lengthRange &&
-                (mode != WordleMode.TOPIC || topic == null || w.category == topic)
-        }.map { it.word.uppercase() }.toSet()
+            isValidWord(w.word) && w.word.length == wordLength
+        }
+            .map { it.word.uppercase() }
+            .toSet()
     }
 
     private suspend fun fetchRemoteWords() {
+        val remoteList = fetchRandomWordsFromApi()
+        if (remoteList.isNotEmpty()) {
+            allWords = remoteList
+            startNewGame()
+            return
+        }
+
         val lessons = runCatching { api.getLessons() }.getOrNull().orEmpty()
         if (lessons.isEmpty()) return
 
@@ -322,45 +252,90 @@ class WordleViewModel @Inject constructor(
         if (remoteWords.isNotEmpty()) {
             val mapped = remoteWords.map { it.toEntity() }
             allWords = mapped
-            val topics = mapped.mapNotNull { it.category.takeIf { c -> c.isNotBlank() } }
-                .distinct()
-                .sorted()
-            _uiState.update { it.copy(availableTopics = topics) }
             startNewGame()
         } else if (allWords.isEmpty()) {
             allWords = defaultWordBank()
-            _uiState.update { it.copy(availableTopics = allWords.mapNotNull { it.category }.distinct()) }
             startNewGame()
         }
     }
 
+    private suspend fun fetchRandomWordsFromApi(): List<WordEntity> = withContext(Dispatchers.IO) {
+        val collected = mutableListOf<String>()
+        val word = fetchValidRandomWord(WORDLE_LENGTH, maxAttempts = 10)
+        if (!word.isNullOrBlank()) {
+            collected.add(word)
+        }
+        return@withContext collected
+            .asSequence()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .filter { it.length == WORDLE_LENGTH }
+            .filter { it.all { ch -> ch.isLetter() } }
+            .distinct()
+            .map {
+                WordEntity(
+                    word = it.lowercase(),
+                    translation = "",
+                    pronunciation = "",
+                    partOfSpeech = "",
+                    exampleSentence = "",
+                    exampleTranslation = "",
+                    lessonId = 0,
+                    difficulty = 1,
+                    category = ""
+                )
+            }
+            .toList()
+    }
+
+    private suspend fun fetchValidRandomWord(length: Int, maxAttempts: Int): String? {
+        repeat(maxAttempts) {
+            val request = Request.Builder()
+                .url("https://random-word-api.herokuapp.com/word?length=$length")
+                .get()
+                .build()
+            val response = runCatching { httpClient.newCall(request).execute() }.getOrNull() ?: return@repeat
+            val word = response.use { resp ->
+                if (!resp.isSuccessful) return@use null
+                val body = resp.body?.string().orEmpty()
+                val type = object : TypeToken<List<String>>() {}.type
+                val words = runCatching { gson.fromJson<List<String>>(body, type) }.getOrDefault(emptyList())
+                words.firstOrNull()
+            }?.trim()
+            if (!word.isNullOrBlank() && checkEnglishWord(word.lowercase())) {
+                return word
+            }
+        }
+        return null
+    }
+
     private fun defaultWordBank(): List<WordEntity> = listOf(
-        WordEntity("apple", "quả táo", "APPLE", "noun", "I eat an apple", "Tôi ăn một quả táo", lessonId = 0, difficulty = 1, category = "food"),
-        WordEntity("brain", "bộ não", "BRAIN", "noun", "Use your brain", "Dùng trí não của bạn", lessonId = 0, difficulty = 2, category = "body"),
-        WordEntity("chair", "cái ghế", "CHAIR", "noun", "Sit on the chair", "Ngồi trên ghế", lessonId = 0, difficulty = 1, category = "home"),
-        WordEntity("drive", "lái xe", "DRIVE", "verb", "I drive to work", "Tôi lái xe đi làm", lessonId = 0, difficulty = 2, category = "travel"),
-        WordEntity("earth", "trái đất", "EARTH", "noun", "The earth is round", "Trái đất hình cầu", lessonId = 0, difficulty = 2, category = "nature"),
-        WordEntity("flame", "ngọn lửa", "FLAME", "noun", "The flame is bright", "Ngọn lửa sáng", lessonId = 0, difficulty = 3, category = "safety"),
-        WordEntity("grape", "quả nho", "GRAPE", "noun", "Grapes are sweet", "Nho thì ngọt", lessonId = 0, difficulty = 1, category = "food"),
-        WordEntity("happy", "hạnh phúc", "HAPPY", "adjective", "I am happy", "Tôi hạnh phúc", lessonId = 0, difficulty = 1, category = "feelings"),
-        WordEntity("island", "hòn đảo", "ISLAND", "noun", "It is an island", "Đó là một hòn đảo", lessonId = 0, difficulty = 2, category = "travel"),
-        WordEntity("jelly", "thạch", "JELLY", "noun", "Jelly is soft", "Thạch mềm", lessonId = 0, difficulty = 1, category = "food"),
-        WordEntity("knife", "con dao", "KNIFE", "noun", "Use a knife", "Dùng dao", lessonId = 0, difficulty = 2, category = "home"),
-        WordEntity("lemon", "quả chanh", "LEMON", "noun", "Lemon is sour", "Chanh chua", lessonId = 0, difficulty = 1, category = "food"),
-        WordEntity("mount", "leo lên", "MOUNT", "verb", "Mount the horse", "Cưỡi lên ngựa", lessonId = 0, difficulty = 3, category = "travel"),
-        WordEntity("night", "ban đêm", "NIGHT", "noun", "Good night", "Chúc ngủ ngon", lessonId = 0, difficulty = 1, category = "daily"),
-        WordEntity("ocean", "đại dương", "OCEAN", "noun", "The ocean is deep", "Đại dương sâu", lessonId = 0, difficulty = 2, category = "nature"),
-        WordEntity("piano", "đàn piano", "PIANO", "noun", "Play the piano", "Chơi piano", lessonId = 0, difficulty = 2, category = "hobby"),
-        WordEntity("queen", "nữ hoàng", "QUEEN", "noun", "The queen smiles", "Nữ hoàng mỉm cười", lessonId = 0, difficulty = 2, category = "people"),
-        WordEntity("river", "dòng sông", "RIVER", "noun", "Cross the river", "Băng qua sông", lessonId = 0, difficulty = 2, category = "nature"),
-        WordEntity("smile", "nụ cười", "SMILE", "noun", "She has a smile", "Cô ấy có nụ cười", lessonId = 0, difficulty = 1, category = "feelings"),
-        WordEntity("table", "cái bàn", "TABLE", "noun", "Put it on the table", "Đặt lên bàn", lessonId = 0, difficulty = 1, category = "home"),
-        WordEntity("urban", "đô thị", "URBAN", "adjective", "Urban area", "Khu vực đô thị", lessonId = 0, difficulty = 3, category = "daily"),
-        WordEntity("voice", "giọng nói", "VOICE", "noun", "Her voice is calm", "Giọng cô ấy dịu", lessonId = 0, difficulty = 2, category = "people"),
-        WordEntity("water", "nước", "WATER", "noun", "Drink water", "Uống nước", lessonId = 0, difficulty = 1, category = "daily"),
-        WordEntity("xenon", "khí xenon", "XENON", "noun", "Xenon is a gas", "Xenon là khí", lessonId = 0, difficulty = 3, category = "science"),
-        WordEntity("youth", "tuổi trẻ", "YOUTH", "noun", "Enjoy your youth", "Hưởng tuổi trẻ", lessonId = 0, difficulty = 2, category = "people"),
-        WordEntity("zebra", "ngựa vằn", "ZEBRA", "noun", "Zebra has stripes", "Ngựa vằn có sọc", lessonId = 0, difficulty = 1, category = "animals")
+        WordEntity("apple", "quả táo", "/ˈæpəl/", "noun", "I eat an apple", "Tôi ăn một quả táo", lessonId = 0, difficulty = 1, category = "food"),
+        WordEntity("brain", "bộ não", "/bɹˈeɪn/", "noun", "Use your brain", "Dùng trí não của bạn", lessonId = 0, difficulty = 2, category = "body"),
+        WordEntity("chair", "cái ghế", "/tʃˈɛɹ/", "noun", "Sit on the chair", "Ngồi trên ghế", lessonId = 0, difficulty = 1, category = "home"),
+        WordEntity("drive", "lái xe", "/dɹˈaɪv/", "verb", "I drive to work", "Tôi lái xe đi làm", lessonId = 0, difficulty = 2, category = "travel"),
+        WordEntity("earth", "trái đất", "/ˈɝθ/", "noun", "The earth is round", "Trái đất hình cầu", lessonId = 0, difficulty = 2, category = "nature"),
+        WordEntity("flame", "ngọn lửa", "/flˈeɪm/", "noun", "The flame is bright", "Ngọn lửa sáng", lessonId = 0, difficulty = 3, category = "safety"),
+        WordEntity("grape", "quả nho", "/gɹˈeɪp/", "noun", "Grapes are sweet", "Nho thì ngọt", lessonId = 0, difficulty = 1, category = "food"),
+        WordEntity("happy", "hạnh phúc", "/hˈæpi/", "adjective", "I am happy", "Tôi hạnh phúc", lessonId = 0, difficulty = 1, category = "feelings"),
+        WordEntity("island", "hòn đảo", "/ˈaɪlənd/", "noun", "It is an island", "Đó là một hòn đảo", lessonId = 0, difficulty = 2, category = "travel"),
+        WordEntity("jelly", "thạch", "/dʒˈɛli/", "noun", "Jelly is soft", "Thạch mềm", lessonId = 0, difficulty = 1, category = "food"),
+        WordEntity("knife", "con dao", "/nˈaɪf/", "noun", "Use a knife", "Dùng dao", lessonId = 0, difficulty = 2, category = "home"),
+        WordEntity("lemon", "quả chanh", "/lˈɛmən/", "noun", "Lemon is sour", "Chanh chua", lessonId = 0, difficulty = 1, category = "food"),
+        WordEntity("mount", "leo lên", "/mˈaʊnt/", "verb", "Mount the horse", "Cưỡi lên ngựa", lessonId = 0, difficulty = 3, category = "travel"),
+        WordEntity("night", "ban đêm", "/nˈaɪt/", "noun", "Good night", "Chúc ngủ ngon", lessonId = 0, difficulty = 1, category = "daily"),
+        WordEntity("ocean", "đại dương", "/ˈoʊʃən/", "noun", "The ocean is deep", "Đại dương sâu", lessonId = 0, difficulty = 2, category = "nature"),
+        WordEntity("piano", "đàn piano", "/piˈænoʊ/", "noun", "Play the piano", "Chơi piano", lessonId = 0, difficulty = 2, category = "hobby"),
+        WordEntity("queen", "nữ hoàng", "/kwˈin/", "noun", "The queen smiles", "Nữ hoàng mỉm cười", lessonId = 0, difficulty = 2, category = "people"),
+        WordEntity("river", "dòng sông", "/ɹˈɪvɚ/", "noun", "Cross the river", "Băng qua sông", lessonId = 0, difficulty = 2, category = "nature"),
+        WordEntity("smile", "nụ cười", "/smˈaɪl/", "noun", "She has a smile", "Cô ấy có nụ cười", lessonId = 0, difficulty = 1, category = "feelings"),
+        WordEntity("table", "cái bàn", "/tˈeɪbəl/", "noun", "Put it on the table", "Đặt lên bàn", lessonId = 0, difficulty = 1, category = "home"),
+        WordEntity("urban", "đô thị", "/ˈɝbən/", "adjective", "Urban area", "Khu vực đô thị", lessonId = 0, difficulty = 3, category = "daily"),
+        WordEntity("voice", "giọng nói", "/vˈɔɪs/", "noun", "Her voice is calm", "Giọng cô ấy dịu", lessonId = 0, difficulty = 2, category = "people"),
+        WordEntity("water", "nước", "/wˈɔtɚ/", "noun", "Drink water", "Uống nước", lessonId = 0, difficulty = 1, category = "daily"),
+        WordEntity("xenon", "khí xenon", "/zˈinɑn/", "noun", "Xenon is a gas", "Xenon là khí", lessonId = 0, difficulty = 3, category = "science"),
+        WordEntity("youth", "tuổi trẻ", "/jˈuθ/", "noun", "Enjoy your youth", "Hưởng tuổi trẻ", lessonId = 0, difficulty = 2, category = "people"),
+        WordEntity("zebra", "ngựa vằn", "/zˈibɹə/", "noun", "Zebra has stripes", "Ngựa vằn có sọc", lessonId = 0, difficulty = 1, category = "animals")
     )
 
     private fun isValidWord(word: String): Boolean = word.all { it.isLetter() }
@@ -402,6 +377,21 @@ class WordleViewModel @Inject constructor(
         return results
     }
 
+    private suspend fun checkEnglishWord(word: String): Boolean = withContext(Dispatchers.IO) {
+        if (word.length != WORDLE_LENGTH) return@withContext false
+        val request = Request.Builder()
+        val request = Request.Builder()
+            .url("https://api.dictionaryapi.dev/api/v2/entries/en/$word")
+            .get()
+            .build()
+        val response = runCatching { httpClient.newCall(request).execute() }.getOrNull() ?: return@withContext validWords.contains(word.uppercase())
+        response.use { resp ->
+            if (resp.isSuccessful) return@withContext true
+            if (resp.code == 404) return@withContext false
+            return@withContext validWords.contains(word.uppercase())
+        }
+    }
+
     private fun updateKeyboard(
         keyboard: Map<Char, LetterState>,
         guess: String,
@@ -427,53 +417,4 @@ class WordleViewModel @Inject constructor(
         return if ((order[next] ?: 0) > (order[current] ?: 0)) next else current
     }
 
-    private fun buildHint(level: Int, word: WordEntity?): HintEntry {
-        if (word == null) return HintEntry(level, "Không có gợi ý")
-        return when (level) {
-            1 -> HintEntry(level, "Nghĩa: ${word.translation}")
-            2 -> {
-                val example = word.exampleSentence.takeIf { it.isNotBlank() }
-                val masked = example?.replace(word.word, "_____", ignoreCase = true) ?: "Không có ví dụ"
-                HintEntry(level, "Ví dụ: $masked")
-            }
-            3 -> {
-                val hint = "Chữ cái: ${word.word.first().uppercaseChar()} _ _ ${word.word.last().uppercaseChar()}"
-                HintEntry(level, hint)
-            }
-            4 -> {
-                val pron = word.pronunciation.takeIf { it.isNotBlank() } ?: "Không có phát âm"
-                HintEntry(level, "Phát âm: $pron")
-            }
-            else -> {
-                val image = word.imageUrl
-                if (image.isNullOrBlank()) {
-                    HintEntry(level, "Không có hình ảnh")
-                } else {
-                    HintEntry(level, "Hình ảnh minh họa", imageUrl = image)
-                }
-            }
-        }
-    }
-
-    private fun calculateScore(
-        guessCount: Int,
-        hintsUsed: Int,
-        mode: WordleMode,
-        currentStreak: Int
-    ): Int {
-        val base = 100
-        val penalty = ((guessCount - 1).coerceAtLeast(0) * 10) + (hintsUsed * 20)
-        val multiplier = if (mode == WordleMode.DAILY && currentStreak >= 1) 1.5 else 1.0
-        val raw = (base - penalty).coerceAtLeast(0)
-        return (raw * multiplier).toInt()
-    }
-
-    private fun buildDailySeed(difficulty: WordleDifficulty, topic: String?): Int {
-        val day = currentEpochDay()
-        return day * 31 + difficulty.ordinal * 7 + (topic?.hashCode() ?: 0)
-    }
-
-    private fun currentEpochDay(): Int {
-        return LocalDate.now(ZoneId.systemDefault()).toEpochDay().toInt()
-    }
 }

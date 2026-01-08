@@ -29,19 +29,19 @@ class AuthViewModel @Inject constructor(
     val uiState: StateFlow<AuthUiState> = _uiState.asStateFlow()
 
     fun onEmailChanged(email: String) {
-        updateUiState { it.copy(email = email, emailError = null) }
+        updateUiState { it.copy(email = email, emailError = null, successMessage = null) }
     }
 
     fun onPasswordChanged(password: String) {
-        updateUiState { it.copy(password = password, passwordError = null) }
+        updateUiState { it.copy(password = password, passwordError = null, successMessage = null) }
     }
 
     fun onDisplayNameChanged(name: String) {
-        updateUiState { it.copy(displayName = name, displayNameError = null) }
+        updateUiState { it.copy(displayName = name, displayNameError = null, successMessage = null) }
     }
 
     fun onConfirmPasswordChanged(password: String) {
-        updateUiState { it.copy(confirmPassword = password, confirmPasswordError = null) }
+        updateUiState { it.copy(confirmPassword = password, confirmPasswordError = null, successMessage = null) }
     }
 
     fun signIn() {
@@ -63,6 +63,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = true,
                     errorMessage = null,
+                    successMessage = null,
                     loginInProgress = AuthFlow.EMAIL
                 )
             }
@@ -72,6 +73,7 @@ class AuthViewModel @Inject constructor(
                     updateUiState {
                         it.copy(
                             isLoading = false,
+                            successMessage = null,
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -81,6 +83,7 @@ class AuthViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             errorMessage = result.message,
+                            successMessage = null,
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -118,6 +121,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = true,
                     errorMessage = null,
+                    successMessage = null,
                     loginInProgress = AuthFlow.NONE
                 )
             }
@@ -131,6 +135,7 @@ class AuthViewModel @Inject constructor(
                     updateUiState {
                         it.copy(
                             isLoading = false,
+                            successMessage = null,
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -140,6 +145,7 @@ class AuthViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             errorMessage = result.message,
+                            successMessage = null,
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -154,6 +160,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = true,
                     errorMessage = null,
+                    successMessage = null,
                     loginInProgress = AuthFlow.ANONYMOUS
                 )
             }
@@ -169,6 +176,7 @@ class AuthViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             errorMessage = result.message,
+                            successMessage = null,
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -183,6 +191,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = true, 
                     errorMessage = null,
+                    successMessage = null,
                     loginInProgress = AuthFlow.GOOGLE
                 )
             }
@@ -192,6 +201,7 @@ class AuthViewModel @Inject constructor(
                     updateUiState {
                         it.copy(
                             isLoading = false,
+                            successMessage = null,
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -201,6 +211,7 @@ class AuthViewModel @Inject constructor(
                         it.copy(
                             isLoading = false,
                             errorMessage = result.message,
+                            successMessage = null,
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -222,6 +233,7 @@ class AuthViewModel @Inject constructor(
                 it.copy(
                     isLoading = true, 
                     errorMessage = null,
+                    successMessage = null,
                     loginInProgress = AuthFlow.NONE
                 )
             }
@@ -231,6 +243,8 @@ class AuthViewModel @Inject constructor(
                     updateUiState {
                         it.copy(
                             isLoading = false,
+                            successMessage = "Đã gửi email đặt lại mật khẩu.",
+                            errorMessage = null,
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -240,6 +254,7 @@ class AuthViewModel @Inject constructor(
                         it.copy(
                             isLoading = false, 
                             errorMessage = result.message,
+                            successMessage = null,
                             loginInProgress = AuthFlow.NONE
                         )
                     }
@@ -253,6 +268,7 @@ class AuthViewModel @Inject constructor(
             it.copy(
                 isLoading = false,
                 errorMessage = message,
+                successMessage = null,
                 loginInProgress = AuthFlow.NONE
             ) 
         }
@@ -273,7 +289,8 @@ class AuthViewModel @Inject constructor(
         confirmPassword = "",
         isLoading = false,
         loginInProgress = AuthFlow.NONE,
-        errorMessage = null
+        errorMessage = null,
+        successMessage = null
     )
 
     companion object {
@@ -293,6 +310,7 @@ data class AuthUiState(
     val displayNameError: String? = null,
     val confirmPasswordError: String? = null,
     val errorMessage: String? = null,
+    val successMessage: String? = null,
     val loginInProgress: AuthFlow = AuthFlow.NONE
 ) : Parcelable
 

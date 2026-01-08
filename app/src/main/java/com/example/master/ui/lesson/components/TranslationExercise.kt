@@ -117,11 +117,7 @@ fun TranslationExercise(
                 ) {
                     RowIndicator(isCorrect = isCorrect)
                     if (!isCorrect) {
-                        Text(
-                            text = "Correct answer: ${exercise.correctAnswer}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF6B7280)
-                        )
+                        CorrectAnswerText(exercise.correctAnswer)
                     }
                 }
             }

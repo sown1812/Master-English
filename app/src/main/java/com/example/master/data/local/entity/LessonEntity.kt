@@ -24,6 +24,7 @@ data class LessonEntity(
     val isUnlocked: Boolean = false,    // Is this lesson available?
     val isPremium: Boolean = false,     // Requires premium?
     
+    val levelId: Int = 0,              // Parent level
     val createdAt: Long = System.currentTimeMillis(),
     val updatedAt: Long = System.currentTimeMillis()
 )

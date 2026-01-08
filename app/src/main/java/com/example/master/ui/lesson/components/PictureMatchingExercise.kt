@@ -108,11 +108,7 @@ fun PictureMatchingExercise(
                             color = if (isCorrect) Color(0xFF10B981) else Color(0xFFEF4444)
                         )
                         if (!isCorrect) {
-                            Text(
-                                text = "Correct answer: ${exercise.correctAnswer}",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = Color(0xFF6B7280)
-                            )
+                            CorrectAnswerText(exercise.correctAnswer)
                         }
                     }
                 }

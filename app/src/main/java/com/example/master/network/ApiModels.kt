@@ -12,16 +12,9 @@ data class QuestStateRemote(
     @SerializedName("isClaimed") val isClaimed: Boolean
 )
 
-data class DailyChallengeStateRemote(
-    @SerializedName("status") val status: String,
-    @SerializedName("progress") val progress: Int,
-    @SerializedName("target") val target: Int
-)
-
 data class GameStateResponseRemote(
     @SerializedName("boosters") val boosters: List<BoosterStateRemote>,
-    @SerializedName("quests") val quests: List<QuestStateRemote>,
-    @SerializedName("daily") val daily: DailyChallengeStateRemote?
+    @SerializedName("quests") val quests: List<QuestStateRemote>
 )
 
 data class UpdateBoosterRequest(
@@ -34,16 +27,3 @@ data class UpdateQuestRequest(
     val claimed: Boolean
 )
 
-data class UpdateDailyRequest(
-    val status: String,
-    val progress: Int,
-    val target: Int
-)
-
-data class LeaderboardEntryRemote(
-    val userId: String,
-    val displayName: String,
-    val totalXp: Int,
-    val coins: Int,
-    val streakDays: Int
-)

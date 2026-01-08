@@ -43,7 +43,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -237,13 +236,36 @@ private fun NotificationFeed(
 			style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
 			color = Color(0xFF2F1F53)
 		)
-		notifications.forEachIndexed { index, notification ->
-			NotificationCard(
-				notification = notification,
-				onClick = { onNotificationClick(notification) }
-			)
-			if (index != notifications.lastIndex) {
-				HorizontalDivider(color = Color(0xFFE5E0F5), thickness = 1.dp, modifier = Modifier.padding(horizontal = 8.dp))
+		if (notifications.isEmpty()) {
+			Card(
+				shape = RoundedCornerShape(20.dp),
+				colors = CardDefaults.cardColors(containerColor = Color.White)
+			) {
+				Column(
+					modifier = Modifier.padding(18.dp),
+					verticalArrangement = Arrangement.spacedBy(6.dp)
+				) {
+					Text(
+						text = "Không có thông báo",
+						style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+						color = Color(0xFF2F1F53)
+					)
+					Text(
+						text = "Hoàn thành bài học để nhận cập nhật mới.",
+						style = MaterialTheme.typography.bodySmall,
+						color = Color(0xFF645A82)
+					)
+				}
+			}
+		} else {
+			notifications.forEachIndexed { index, notification ->
+				NotificationCard(
+					notification = notification,
+					onClick = { onNotificationClick(notification) }
+				)
+				if (index != notifications.lastIndex) {
+					HorizontalDivider(color = Color(0xFFE5E0F5), thickness = 1.dp, modifier = Modifier.padding(horizontal = 8.dp))
+				}
 			}
 		}
 	}
@@ -318,8 +340,3 @@ private fun NotificationCard(
 	}
 }
 
-@Preview(showBackground = true)
-@Composable
-private fun NotificationsScreenPreview() {
-	NotificationsScreen(state = NotificationUiState.sample())
-}

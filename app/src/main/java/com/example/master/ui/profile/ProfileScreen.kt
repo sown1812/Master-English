@@ -132,6 +132,11 @@ private fun ProfileContent(
                     )
                     Text(text = profile.email, style = MaterialTheme.typography.bodyMedium, color = Color(0xFF6B7280))
                     Text(text = "Gia nhập: ${dateFormat.format(profile.createdAt)}", style = MaterialTheme.typography.bodySmall)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ProfileChip(label = "Level", value = profile.level.toString(), color = Color(0xFF4F46E5))
+                        ProfileChip(label = "Streak", value = "${profile.streakDays} ngày", color = Color(0xFFEF4444))
+                    }
                 }
             }
         }
@@ -147,32 +152,28 @@ private fun ProfileContent(
 
         ProgressCard(streakDays = profile.streakDays, xp = profile.xp)
 
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+        Button(
+            onClick = onRefresh,
+            modifier = Modifier.align(Alignment.End),
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
         ) {
-            Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = "Hoạt động gần đây", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                Text(
-                    text = "Lần hoạt động cuối: ${dateFormat.format(profile.lastActive)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = Color(0xFF4B5563)
-                )
-                Text(
-                    text = "Tiếp tục duy trì streak để nhận thưởng mỗi ngày!",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280)
-                )
-                Button(
-                    onClick = onRefresh,
-                    modifier = Modifier.align(Alignment.End),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6366F1))
-                ) {
-                    Text("Làm mới", color = Color.White)
-                }
-            }
+            Text("Làm mới", color = Color.White)
         }
+    }
+}
+
+@Composable
+private fun ProfileChip(label: String, value: String, color: Color) {
+    Surface(
+        shape = RoundedCornerShape(50),
+        color = color.copy(alpha = 0.12f)
+    ) {
+        Text(
+            text = "$label: $value",
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
+            color = color,
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
+        )
     }
 }
 

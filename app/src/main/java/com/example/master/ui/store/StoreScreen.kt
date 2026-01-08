@@ -27,9 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.example.master.data.local.ChallengeStatus
+import com.example.master.R
 
 @Composable
 fun StoreRoute(
@@ -40,8 +41,6 @@ fun StoreRoute(
         state = state.value,
         onBuyBooster = viewModel::purchaseBooster,
         onClaimQuest = viewModel::claimQuest,
-        onStartDaily = viewModel::startDailyChallenge,
-        onSubmitDaily = { viewModel.submitDailyChallenge(score = 50) },
         onMessageShown = viewModel::clearMessage
     )
 }
@@ -51,8 +50,6 @@ fun StoreScreen(
     state: StoreUiState,
     onBuyBooster: (String) -> Unit,
     onClaimQuest: (String) -> Unit,
-    onStartDaily: () -> Unit,
-    onSubmitDaily: () -> Unit,
     onMessageShown: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -69,7 +66,10 @@ fun StoreScreen(
             .fillMaxSize()
             .background(
                 Brush.verticalGradient(
-                    listOf(Color(0xFFFDF3FF), Color(0xFFE8F7FF))
+                    listOf(
+                        MaterialTheme.colorScheme.background,
+                        MaterialTheme.colorScheme.surface
+                    )
                 )
             )
     ) {
@@ -87,8 +87,7 @@ fun StoreScreen(
                     color = Color(0xFF6B7280)
                 )
             }
-            DailyChallengeCard(state.dailyChallenge, onStartDaily, onSubmitDaily)
-            BoostersSection(state.boosters, onBuyBooster)
+            BoostersSection(state.boosters, state.coins, onBuyBooster)
             QuestsSection(state.quests, onClaimQuest)
         }
 
@@ -109,57 +108,22 @@ private fun Header(coins: Int) {
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold),
             color = Color(0xFF3C2A6E)
         )
-        Text(
-            text = "Coins hiện có: $coins",
-            style = MaterialTheme.typography.bodyMedium,
-            color = Color(0xFF6B5CA5)
-        )
-    }
-}
-
-@Composable
-private fun DailyChallengeCard(
-    data: DailyChallengeUi,
-    onStart: () -> Unit,
-    onSubmit: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.96f))
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(
-                text = data.title,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                color = Color(0xFF284B63)
-            )
-            Text(
-                text = "Phần thưởng: ${data.rewardCoins} coins",
+                text = "Hiện có:",
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF3F6B8D)
+                color = Color(0xFF6B5CA5)
+            )
+            androidx.compose.material3.Icon(
+                painter = painterResource(id = R.drawable.ic_coin),
+                contentDescription = null,
+                tint = Color.Unspecified
             )
             Text(
-                text = "Tiến độ: ${data.progress}/${data.target}",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color(0xFF6B778D)
+                text = coins.toString(),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                color = Color(0xFF6B5CA5)
             )
-            val (label, action, enabled) = when (data.status) {
-                ChallengeStatus.READY -> Triple("Bắt đầu", onStart, true)
-                ChallengeStatus.IN_PROGRESS -> Triple("Nộp kết quả", onSubmit, true)
-                ChallengeStatus.COMPLETED -> Triple("Hoàn thành", {}, false)
-                ChallengeStatus.CLAIMED -> Triple("Đã nhận thưởng", {}, false)
-            }
-            Button(
-                onClick = action,
-                enabled = enabled,
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00A8B5))
-            ) {
-                Text(label, fontWeight = FontWeight.Bold, color = Color.White)
-            }
         }
     }
 }
@@ -167,6 +131,7 @@ private fun DailyChallengeCard(
 @Composable
 private fun BoostersSection(
     boosters: List<BoosterUi>,
+    coins: Int,
     onBuy: (String) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -198,18 +163,36 @@ private fun BoostersSection(
                             style = MaterialTheme.typography.bodySmall,
                             color = Color(0xFF5C6A7C)
                         )
+                        if (!booster.isOwned && coins < booster.costCoins) {
+                            Text(
+                                text = "Thiếu ${booster.costCoins - coins} coins",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFFEF4444)
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.width(12.dp))
                     Button(
                         onClick = { onBuy(booster.key) },
-                        enabled = !booster.isOwned,
+                        enabled = !booster.isOwned && coins >= booster.costCoins,
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF6C5AE6))
                     ) {
-                        Text(
-                            text = if (booster.isOwned) "Đã mua" else "${booster.costCoins}c",
-                            color = Color.White
-                        )
+                        if (booster.isOwned) {
+                            Text(text = "Đã mua", color = Color.White)
+                        } else {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                androidx.compose.material3.Icon(
+                                    painter = painterResource(id = R.drawable.ic_coin),
+                                    contentDescription = null,
+                                    tint = Color.Unspecified
+                                )
+                                Text(text = booster.costCoins.toString(), color = Color.White)
+                            }
+                        }
                     }
                 }
             }
@@ -275,10 +258,25 @@ private fun QuestsSection(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = "Thưởng: ${quest.rewardCoins} coins",
+                            text = "Thưởng:",
                             style = MaterialTheme.typography.bodyMedium,
                             color = Color(0xFF2F6F80)
                         )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            androidx.compose.material3.Icon(
+                                painter = painterResource(id = R.drawable.ic_coin),
+                                contentDescription = null,
+                                tint = Color.Unspecified
+                            )
+                            Text(
+                                text = quest.rewardCoins.toString(),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
+                                color = Color(0xFF2F6F80)
+                            )
+                        }
                         Button(
                             onClick = { onClaim(quest.key) },
                             enabled = quest.isCompleted && !quest.isClaimed,

@@ -19,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -26,7 +27,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -57,6 +60,7 @@ fun MistakeReviewScreen(
     onClearMistake: (Int) -> Unit
 ) {
     val dateFormatter = rememberDateFormatter()
+    var pendingClearLesson by remember { mutableStateOf<Int?>(null) }
 
     Column(
         modifier = Modifier
@@ -130,7 +134,7 @@ fun MistakeReviewScreen(
                                 )
                             }
                             Button(
-                                onClick = { onClearLesson(group.lessonId) },
+                                onClick = { pendingClearLesson = group.lessonId },
                                 colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEEF2FF))
                             ) {
                                 Icon(Icons.Filled.Refresh, contentDescription = null, tint = Color(0xFF4338CA))
@@ -150,6 +154,34 @@ fun MistakeReviewScreen(
                 }
             }
         }
+    }
+
+    if (pendingClearLesson != null) {
+        AlertDialog(
+            onDismissRequest = { pendingClearLesson = null },
+            title = { Text("Xóa nhóm lỗi") },
+            text = { Text("Bạn có muốn xóa toàn bộ lỗi của bài này không?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val lessonId = pendingClearLesson
+                        if (lessonId != null) onClearLesson(lessonId)
+                        pendingClearLesson = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4338CA))
+                ) {
+                    Text("Xóa", color = Color.White)
+                }
+            },
+            dismissButton = {
+                Button(
+                    onClick = { pendingClearLesson = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE5E7EB))
+                ) {
+                    Text("Hủy")
+                }
+            }
+        )
     }
 }
 

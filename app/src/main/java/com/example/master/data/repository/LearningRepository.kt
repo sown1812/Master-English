@@ -19,6 +19,9 @@ class LearningRepository @Inject constructor(
     private val wordDao = database.wordDao()
     private val lessonDao = database.lessonDao()
     private val exerciseDao = database.exerciseDao()
+    private val sectionDao = database.sectionDao()
+    private val unitDao = database.unitDao()
+    private val levelDao = database.levelDao()
     private val userDao = database.userDao()
     private val progressDao = database.userProgressDao()
     private val achievementDao = database.achievementDao()
@@ -29,10 +32,19 @@ class LearningRepository @Inject constructor(
     // ==================== Lessons ====================
     
     fun getAllLessons(): Flow<List<LessonEntity>> = lessonDao.getAllLessons()
+
+    fun getAllSections(): Flow<List<SectionEntity>> = sectionDao.getAllSections()
+
+    fun getAllUnits(): Flow<List<UnitEntity>> = unitDao.getAllUnits()
+
+    fun getAllLevels(): Flow<List<LevelEntity>> = levelDao.getAllLevels()
     
     fun getUnlockedLessons(): Flow<List<LessonEntity>> = lessonDao.getUnlockedLessons()
     
     suspend fun getLessonById(lessonId: Int): LessonEntity? = lessonDao.getLessonById(lessonId)
+
+    suspend fun getLessonsByLevelIds(levelIds: List<Int>): List<LessonEntity> =
+        if (levelIds.isEmpty()) emptyList() else lessonDao.getLessonsByLevelIds(levelIds)
     
     suspend fun unlockLesson(lessonId: Int) = lessonDao.unlockLesson(lessonId)
     
@@ -94,6 +106,26 @@ class LearningRepository @Inject constructor(
     suspend fun insertUser(user: UserEntity) = userDao.insertUser(user)
     
     suspend fun updateUser(user: UserEntity) = userDao.updateUser(user)
+
+    suspend fun unlockLessonWithCoins(lessonId: Int, cost: Int): UnlockResult {
+        val user = userDao.getCurrentUserSync() ?: return UnlockResult(
+            success = false,
+            message = "Chua dang nhap, khong the mo bai hoc."
+        )
+        val lesson = lessonDao.getLessonById(lessonId) ?: return UnlockResult(
+            success = false,
+            message = "Khong tim thay bai hoc."
+        )
+        if (lesson.isUnlocked) {
+            return UnlockResult(success = true, message = "Bai hoc da mo.")
+        }
+        if (user.coins < cost) {
+            return UnlockResult(success = false, message = "Khong du coins.")
+        }
+        userDao.updateUser(user.copy(coins = user.coins - cost))
+        lessonDao.unlockLesson(lessonId)
+        return UnlockResult(success = true, message = "Da mo khoa bai hoc.")
+    }
     
     suspend fun addXP(userId: String, xp: Int) {
         userDao.addXP(userId, xp)
@@ -127,17 +159,36 @@ class LearningRepository @Inject constructor(
         val user = userDao.getUserByIdSync(userId) ?: return
         val currentDate = System.currentTimeMillis()
         val lastStudyDate = user.lastStudyDate
-        val oneDayInMillis = 24 * 60 * 60 * 1000
-        
-        val daysDifference = ((currentDate - lastStudyDate) / oneDayInMillis).toInt()
-        
+
+        val daysDifference = calculateDayDiff(currentDate, lastStudyDate)
         val newStreakDays = when {
+            lastStudyDate == 0L -> 1
             daysDifference == 0 -> user.streakDays // Same day, no change
             daysDifference == 1 -> user.streakDays + 1 // Next day, increment
             else -> 1 // Streak broken, reset to 1
         }
-        
+
         userDao.updateStreak(userId, newStreakDays, currentDate)
+    }
+
+    private fun calculateDayDiff(currentMillis: Long, lastMillis: Long): Int {
+        if (lastMillis <= 0L) return Int.MAX_VALUE
+        val current = Calendar.getInstance().apply {
+            timeInMillis = currentMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val last = Calendar.getInstance().apply {
+            timeInMillis = lastMillis
+            set(Calendar.HOUR_OF_DAY, 0)
+            set(Calendar.MINUTE, 0)
+            set(Calendar.SECOND, 0)
+            set(Calendar.MILLISECOND, 0)
+        }
+        val diff = (current.timeInMillis - last.timeInMillis) / oneDayInMillis
+        return diff.toInt()
     }
     
     // ==================== Progress ====================
@@ -276,24 +327,6 @@ class LearningRepository @Inject constructor(
             ),
             AchievementEntity(
                 userId = userId,
-                achievementType = "GRAMMAR_A1_A2",
-                title = "Grammar Foundation",
-                description = "Complete grammar foundations (A1-A2)",
-                target = 5,
-                xpReward = 150,
-                coinsReward = 60
-            ),
-            AchievementEntity(
-                userId = userId,
-                achievementType = "GRAMMAR_GURU",
-                title = "Grammar Guru",
-                description = "Complete all grammar quests",
-                target = 15,
-                xpReward = 250,
-                coinsReward = 120
-            ),
-            AchievementEntity(
-                userId = userId,
                 achievementType = "LISTENING_100",
                 title = "Listening Pro",
                 description = "Finish 100 listening exercises",
@@ -420,8 +453,6 @@ class LearningRepository @Inject constructor(
         checkAndUnlockAchievement(userId, "QUEST_STARTER", snapshot.lessonsCompleted)
         checkAndUnlockAchievement(userId, "QUEST_WARRIOR", snapshot.lessonsCompleted)
         checkAndUnlockAchievement(userId, "QUEST_MASTER", snapshot.lessonsCompleted.coerceAtMost(totalLessons))
-        checkAndUnlockAchievement(userId, "GRAMMAR_A1_A2", snapshot.lessonsCompleted)
-        checkAndUnlockAchievement(userId, "GRAMMAR_GURU", snapshot.lessonsCompleted)
         checkAndUnlockAchievement(userId, "MULTI_QUEST_HERO", snapshot.categories.size)
         
         val hasCareerLesson = snapshot.categories.any { category ->
@@ -545,7 +576,10 @@ class LearningRepository @Inject constructor(
     suspend fun replaceLessons(lessons: List<LessonEntity>) {
         lessonDao.deleteAllLessons()
         if (lessons.isNotEmpty()) {
-            lessonDao.insertLessons(lessons)
+            val mapped = lessons.map { lesson ->
+                if (lesson.levelId == 0) lesson.copy(levelId = lesson.id) else lesson
+            }
+            lessonDao.insertLessons(mapped)
         }
     }
 
@@ -595,6 +629,11 @@ data class UserStatistics(
     val lessonsCompleted: Int,
     val averageAccuracy: Float,
     val achievementsUnlocked: Int
+)
+
+data class UnlockResult(
+    val success: Boolean,
+    val message: String
 )
 
 data class AchievementSnapshot(

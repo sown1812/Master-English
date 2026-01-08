@@ -3,6 +3,8 @@
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.master.core.network.NetworkMonitor
+import com.example.master.data.local.entity.ExerciseEntity
 import com.example.master.data.local.entity.UserProgressEntity
 import com.example.master.data.local.entity.WordEntity
 import com.example.master.data.repository.LearningRepository
@@ -19,11 +21,13 @@ import javax.inject.Inject
 
 private const val FAIL_XP_REWARD = 10
 private const val FAIL_COIN_REWARD = 4
+private const val HINT_COIN_COST = 10
 
 @HiltViewModel
 class LessonViewModel @Inject constructor(
     private val repository: LearningRepository,
     private val syncManager: com.example.master.sync.SyncManager,
+    private val networkMonitor: NetworkMonitor,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
     
@@ -31,26 +35,83 @@ class LessonViewModel @Inject constructor(
     
     private val gson = Gson()
     private val engine = ExerciseEngine()
+    private var hasLoaded = false
+    private var isLoadingLesson = false
     
     private val _uiState = MutableStateFlow(LessonUiState(lessonId = lessonId))
     val uiState: StateFlow<LessonUiState> = _uiState.asStateFlow()
     
     init {
+        observeNetwork()
         loadLesson()
     }
-    
+
+    private fun observeNetwork() {
+        viewModelScope.launch {
+            networkMonitor.isConnected.collect { connected ->
+                val hasUser = repository.getCurrentUserSync() != null
+                _uiState.update {
+                    it.copy(networkError = if (!connected && !hasUser) "Can ket noi internet de hoc bai nay." else null)
+                }
+                if (connected && !hasLoaded) loadLesson()
+                if (!connected && hasUser && !hasLoaded) loadLesson()
+            }
+        }
+    }
+
     private fun loadLesson() {
         viewModelScope.launch {
+            val connected = networkMonitor.isConnectedNow()
+            val hasUser = repository.getCurrentUserSync() != null
+            if (!connected && !hasUser) {
+                _uiState.update {
+                    it.copy(isLoading = false, networkError = "Can ket noi internet de hoc bai nay.")
+                }
+                return@launch
+            }
+            if (hasLoaded || isLoadingLesson) return@launch
+            isLoadingLesson = true
             _uiState.update { it.copy(isLoading = true) }
             try {
                 val lesson = repository.getLessonById(lessonId)
                 val exercises = repository.getExercisesByLesson(lessonId).first()
-                val words = repository.getWordsByLesson(lessonId).first()
+                val lessonWords = repository.getWordsByLesson(lessonId).first()
+                val reviewWords = if (lessonId > 1) {
+                    val userId = repository.getCurrentUserSync()?.userId
+                    val previousCompleted = if (userId != null) {
+                        repository.getLessonProgress(userId, lessonId - 1)?.isCompleted == true
+                    } else {
+                        false
+                    }
+                    if (previousCompleted) repository.getWordsByLesson(lessonId - 1).first() else emptyList()
+                } else {
+                    emptyList()
+                }
+                val optionWords = (lessonWords + reviewWords).distinctBy { it.id }
+                val wordById = lessonWords.associateBy { it.id }
                 
-                val exerciseList = exercises
-                    .sortedBy { it.order }
+                val normalizedExercises = exercises
+                    .sortedWith(compareBy<ExerciseEntity> { it.difficulty }.thenBy { it.order })
+                    .let { list ->
+                        val seen = mutableSetOf<String>()
+                        list.filter { exercise ->
+                            val key = listOf(
+                                exercise.type.uppercase(),
+                                exercise.question.trim().lowercase(),
+                                exercise.correctAnswer.trim().lowercase()
+                            ).joinToString("|")
+                            if (key in seen) {
+                                false
+                            } else {
+                                seen.add(key)
+                                true
+                            }
+                        }
+                    }
+
+                val builtExercises = normalizedExercises
                     .map { exerciseEntity ->
-                        val word = words.find { it.id == exerciseEntity.wordId }
+                        val word = wordById[exerciseEntity.wordId]
                         when (exerciseEntity.type.uppercase()) {
                             "MULTIPLE_CHOICE" -> Exercise.MultipleChoice(
                                 id = exerciseEntity.id,
@@ -58,13 +119,7 @@ class LessonViewModel @Inject constructor(
                                 correctAnswer = exerciseEntity.correctAnswer,
                                 word = word,
                                 explanation = exerciseEntity.explanation,
-                                options = listOfNotNull(
-                                    exerciseEntity.optionA,
-                                    exerciseEntity.optionB,
-                                    exerciseEntity.optionC,
-                                    exerciseEntity.optionD,
-                                    exerciseEntity.correctAnswer
-                                ).distinct().shuffled()
+                                options = buildMultipleChoiceOptions(exerciseEntity, optionWords)
                             )
                             
                             "FILL_BLANK" -> Exercise.FillBlank(
@@ -83,6 +138,15 @@ class LessonViewModel @Inject constructor(
                                 word = word,
                                 explanation = exerciseEntity.explanation
                             )
+
+                            "WORD_TILES" -> Exercise.WordTiles(
+                                id = exerciseEntity.id,
+                                question = exerciseEntity.question,
+                                correctAnswer = exerciseEntity.correctAnswer,
+                                word = word,
+                                explanation = exerciseEntity.explanation,
+                                tiles = buildWordTiles(exerciseEntity, lessonWords)
+                            )
                             
                             "MATCHING" -> Exercise.Matching(
                                 id = exerciseEntity.id,
@@ -90,7 +154,7 @@ class LessonViewModel @Inject constructor(
                                 correctAnswer = "",
                                 word = word,
                                 explanation = exerciseEntity.explanation,
-                                pairs = parseMatchPairs(exerciseEntity.matchPairs, words)
+                                pairs = parseMatchPairs(exerciseEntity.matchPairs, lessonWords)
                             )
                             
                             "LISTENING" -> Exercise.Listening(
@@ -100,7 +164,7 @@ class LessonViewModel @Inject constructor(
                                 word = word,
                                 explanation = exerciseEntity.explanation,
                                 audioUrl = word?.audioUrl,
-                                options = buildListeningOptions(exerciseEntity, words)
+                                options = buildListeningOptions(exerciseEntity, optionWords)
                             )
                             
                             "SPEAKING" -> Exercise.Speaking(
@@ -120,7 +184,7 @@ class LessonViewModel @Inject constructor(
                                 correctAnswer = word?.word ?: exerciseEntity.correctAnswer,
                                 word = word,
                                 explanation = exerciseEntity.explanation,
-                                options = buildPictureOptions(exerciseEntity, words, word)
+                                options = buildPictureOptions(exerciseEntity, lessonWords, word)
                             )
 
                             "FLASHCARD" -> Exercise.Flashcard(
@@ -135,7 +199,7 @@ class LessonViewModel @Inject constructor(
                             )
 
                             "SPEED_MATCH" -> run {
-                                val pairs = parseSpeedMatchPairs(exerciseEntity.matchPairs, words)
+                                val pairs = parseSpeedMatchPairs(exerciseEntity.matchPairs, lessonWords)
                                 Exercise.SpeedMatching(
                                     id = exerciseEntity.id,
                                     question = exerciseEntity.question.ifBlank { "Ghép từ thật nhanh!" },
@@ -155,32 +219,46 @@ class LessonViewModel @Inject constructor(
                                 correctAnswer = exerciseEntity.correctAnswer,
                                 word = word,
                                 explanation = exerciseEntity.explanation,
-                                options = listOf(exerciseEntity.correctAnswer)
+                                options = buildMultipleChoiceOptions(exerciseEntity, optionWords)
                             )
                         }
                     }
+                val reviewExercises = if (reviewWords.isNotEmpty()) {
+                    buildGeneratedExercises(reviewWords).take(2)
+                } else {
+                    emptyList()
+                }
+
+                val exerciseList = (reviewExercises + builtExercises)
                     .let { built ->
-                        if (built.isNotEmpty()) built else buildGeneratedExercises(words)
+                        if (built.isNotEmpty()) built else buildGeneratedExercises(lessonWords)
                     }
                     .let { built ->
                         if (built.any { it is Exercise.SpeedMatching }) {
                             built
                         } else {
-                            val speedMatch = buildSpeedMatchExercise(words)
+                            val speedMatch = buildSpeedMatchExercise(lessonWords)
                             if (speedMatch != null) built + speedMatch else built
                         }
                     }
+                    .let { built -> ensureAllExerciseTypes(built, lessonWords) }
+                    .distinctBy { exerciseDedupKey(it) }
+                    .take(10)
 
                 _uiState.update {
                     it.copy(
                         lessonTitle = lesson?.title ?: "Lesson",
                         exercises = exerciseList,
                         totalExercises = exerciseList.size,
-                        isLoading = false
+                        isLoading = false,
+                        networkError = null
                     )
                 }
+                hasLoaded = true
             } catch (e: Exception) {
                 _uiState.update { it.copy(isLoading = false) }
+            } finally {
+                isLoadingLesson = false
             }
         }
     }
@@ -196,6 +274,8 @@ class LessonViewModel @Inject constructor(
             is LessonEvent.FlashcardRated -> handleFlashcardRated(event.remembered)
             is LessonEvent.SpeedMatchClueSelected -> handleSpeedMatchClueSelected(event.clueId)
             is LessonEvent.SpeedMatchWordSelected -> handleSpeedMatchWordSelected(event.wordId)
+            is LessonEvent.WordTileSelected -> handleWordTileSelected(event.word)
+            is LessonEvent.WordTileRemoved -> handleWordTileRemoved(event.index)
             LessonEvent.SpeedMatchTick -> handleSpeedMatchTick()
             LessonEvent.SubmitAnswer -> submitAnswer()
             LessonEvent.NextExercise -> nextExercise()
@@ -207,145 +287,70 @@ class LessonViewModel @Inject constructor(
     
     private fun handleAnswerSelected(answer: String) {
         val currentExercise = getCurrentExercise() ?: return
-        val index = _uiState.value.currentExerciseIndex
-        val updatedExercises = _uiState.value.exercises.toMutableList()
         
         val updatedExercise = when (currentExercise) {
             is Exercise.MultipleChoice -> currentExercise.copy(selectedAnswer = answer)
             is Exercise.Listening -> currentExercise.copy(selectedAnswer = answer)
             else -> return
         }
-        
-        updatedExercises[index] = updatedExercise
-        _uiState.update {
-            it.copy(
-                exercises = updatedExercises,
-                isAnswerReady = true,
-                feedbackMessage = null,
-                explanation = null
-            )
-        }
+
+        updateExercise(updatedExercise, isAnswerReady = true)
     }
     
     private fun handleFillBlankAnswered(answer: String) {
         val currentExercise = getCurrentExercise() ?: return
-        val index = _uiState.value.currentExerciseIndex
-        val updatedExercises = _uiState.value.exercises.toMutableList()
         
-        when (currentExercise) {
-            is Exercise.FillBlank -> {
-                updatedExercises[index] = currentExercise.copy(userAnswer = answer)
-            }
-            is Exercise.Translation -> {
-                updatedExercises[index] = currentExercise.copy(userAnswer = answer)
-            }
+        val updatedExercise = when (currentExercise) {
+            is Exercise.FillBlank -> currentExercise.copy(userAnswer = answer)
+            is Exercise.Translation -> currentExercise.copy(userAnswer = answer)
             else -> return
         }
-        
-        _uiState.update {
-            it.copy(
-                exercises = updatedExercises,
-                isAnswerReady = answer.isNotBlank(),
-                feedbackMessage = null,
-                explanation = null
-            )
-        }
+
+        updateExercise(updatedExercise, isAnswerReady = answer.isNotBlank())
     }
     
     private fun handlePairMatched(left: String, right: String) {
         val currentExercise = getCurrentExercise() as? Exercise.Matching ?: return
-        val index = _uiState.value.currentExerciseIndex
         
         val updatedPairs = currentExercise.selectedPairs.toMutableMap()
+        updatedPairs.entries.removeAll { it.key != left && it.value == right }
         updatedPairs[left] = right
         
         val updatedExercise = currentExercise.copy(selectedPairs = updatedPairs)
-        val updatedExercises = _uiState.value.exercises.toMutableList()
-        updatedExercises[index] = updatedExercise
         
         val allPairsSelected = updatedExercise.selectedPairs.size == updatedExercise.pairs.size
-        _uiState.update {
-            it.copy(
-                exercises = updatedExercises,
-                isAnswerReady = allPairsSelected,
-                feedbackMessage = null,
-                explanation = null
-            )
-        }
+        updateExercise(updatedExercise, isAnswerReady = allPairsSelected)
     }
     
     private fun handlePictureOptionSelected(optionId: String) {
         val currentExercise = getCurrentExercise() as? Exercise.PictureMatching ?: return
-        val index = _uiState.value.currentExerciseIndex
         
         val updatedExercise = currentExercise.copy(selectedOptionId = optionId)
-        val updatedExercises = _uiState.value.exercises.toMutableList()
-        updatedExercises[index] = updatedExercise
-        
-        _uiState.update {
-            it.copy(
-                exercises = updatedExercises,
-                isAnswerReady = true,
-                feedbackMessage = null,
-                explanation = null
-            )
-        }
+        updateExercise(updatedExercise, isAnswerReady = true)
     }
     
     private fun handleSpeakingTranscript(transcript: String) {
         val currentExercise = getCurrentExercise() as? Exercise.Speaking ?: return
-        val index = _uiState.value.currentExerciseIndex
         
         val updatedExercise = currentExercise.copy(recognizedText = transcript)
-        val updatedExercises = _uiState.value.exercises.toMutableList()
-        updatedExercises[index] = updatedExercise
-        
-        _uiState.update {
-            it.copy(
-                exercises = updatedExercises,
-                isAnswerReady = transcript.isNotBlank(),
-                feedbackMessage = null,
-                explanation = null
-            )
-        }
+        updateExercise(updatedExercise, isAnswerReady = transcript.isNotBlank())
     }
 
     private fun handleFlashcardFlipped(flipped: Boolean) {
         val currentExercise = getCurrentExercise() as? Exercise.Flashcard ?: return
-        val index = _uiState.value.currentExerciseIndex
         
         val updatedExercise = currentExercise.copy(isFlipped = flipped)
-        val updatedExercises = _uiState.value.exercises.toMutableList()
-        updatedExercises[index] = updatedExercise
-        
-        _uiState.update {
-            it.copy(
-                exercises = updatedExercises,
-                feedbackMessage = null,
-                explanation = null
-            )
-        }
+        updateExercise(updatedExercise, resetFeedback = true)
     }
 
     private fun handleFlashcardRated(remembered: Boolean) {
         val currentExercise = getCurrentExercise() as? Exercise.Flashcard ?: return
-        val index = _uiState.value.currentExerciseIndex
         
         val updatedExercise = currentExercise.copy(
             isRemembered = remembered,
             isFlipped = true
         )
-        val updatedExercises = _uiState.value.exercises.toMutableList()
-        updatedExercises[index] = updatedExercise
-        
-        _uiState.update {
-            it.copy(
-                exercises = updatedExercises,
-                isAnswerReady = true,
-                feedbackMessage = null,
-                explanation = null
-            )
-        }
+        updateExercise(updatedExercise, isAnswerReady = true)
     }
 
     private fun handleSpeedMatchClueSelected(clueId: String) {
@@ -390,6 +395,36 @@ class LessonViewModel @Inject constructor(
                 explanation = null
             )
         }
+    }
+
+    private fun handleWordTileSelected(word: String) {
+        if (_uiState.value.showResult) return
+        val currentExercise = getCurrentExercise() as? Exercise.WordTiles ?: return
+        val available = buildAvailableTiles(currentExercise.tiles, currentExercise.selectedWords)
+        if (word !in available) return
+        if (currentExercise.selectedWords.size >= expectedTileCount(currentExercise)) return
+
+        val updatedExercise = currentExercise.copy(
+            selectedWords = currentExercise.selectedWords + word
+        )
+        updateExercise(
+            updatedExercise,
+            isAnswerReady = expectedTileCount(updatedExercise) == updatedExercise.selectedWords.size
+        )
+    }
+
+    private fun handleWordTileRemoved(indexToRemove: Int) {
+        if (_uiState.value.showResult) return
+        val currentExercise = getCurrentExercise() as? Exercise.WordTiles ?: return
+        if (indexToRemove !in currentExercise.selectedWords.indices) return
+        val updatedWords = currentExercise.selectedWords.toMutableList().apply {
+            removeAt(indexToRemove)
+        }
+        val updatedExercise = currentExercise.copy(selectedWords = updatedWords)
+        updateExercise(
+            updatedExercise,
+            isAnswerReady = expectedTileCount(updatedExercise) == updatedWords.size
+        )
     }
 
     private fun applySpeedMatchUpdate(exercise: Exercise.SpeedMatching) {
@@ -482,9 +517,11 @@ class LessonViewModel @Inject constructor(
                     lastAnswerCorrect = null,
                     feedbackMessage = null,
                     explanation = null,
+                    hintText = null,
                     isAnswerReady = when (val nextExercise = it.exercises[nextIndex]) {
                         is Exercise.FillBlank -> nextExercise.userAnswer.isNotBlank()
                         is Exercise.Translation -> nextExercise.userAnswer.isNotBlank()
+                        is Exercise.WordTiles -> expectedTileCount(nextExercise) == nextExercise.selectedWords.size
                         is Exercise.MultipleChoice -> nextExercise.selectedAnswer != null
                         is Exercise.Listening -> nextExercise.selectedAnswer != null
                         is Exercise.Matching -> nextExercise.selectedPairs.isNotEmpty()
@@ -555,7 +592,34 @@ class LessonViewModel @Inject constructor(
     }
     
     private fun showHint() {
-        // TODO: Integrate hint system consuming coins
+        val currentExercise = getCurrentExercise() ?: return
+        if (_uiState.value.hintText != null) return
+
+        viewModelScope.launch {
+            val user = repository.getCurrentUserSync() ?: return@launch
+            val userId = user.userId
+            if (user.coins < HINT_COIN_COST) {
+                _uiState.update { it.copy(feedbackMessage = "Không đủ coins để dùng hint.") }
+                return@launch
+            }
+            repository.addCoins(userId, -HINT_COIN_COST)
+
+            val hint = when (currentExercise) {
+                is Exercise.FillBlank -> currentExercise.hint
+                    ?: "Gợi ý: bắt đầu bằng \"${currentExercise.correctAnswer.firstOrNull() ?: '?'}\""
+                is Exercise.Translation -> "Gợi ý: ${currentExercise.correctAnswer.split(" ").firstOrNull().orEmpty()}"
+                is Exercise.MultipleChoice -> "Gợi ý: đáp án bắt đầu với \"${currentExercise.correctAnswer.firstOrNull() ?: '?'}\""
+                is Exercise.Listening -> "Gợi ý: đáp án bắt đầu với \"${currentExercise.correctAnswer.firstOrNull() ?: '?'}\""
+                is Exercise.WordTiles -> "Gợi ý: ${expectedTileCount(currentExercise)} từ"
+                is Exercise.Matching -> "Gợi ý: bắt đầu ghép các từ dễ trước"
+                is Exercise.PictureMatching -> "Gợi ý: đọc kỹ từ khóa trong câu hỏi"
+                is Exercise.Speaking -> "Gợi ý: ${currentExercise.correctAnswer.split(" ").firstOrNull().orEmpty()}"
+                is Exercise.Flashcard -> "Gợi ý: ${currentExercise.backText}"
+                is Exercise.SpeedMatching -> "Gợi ý: ghép các từ ngắn trước"
+            }
+
+            _uiState.update { it.copy(hintText = hint) }
+        }
     }
     
     private fun retryLesson() {
@@ -576,6 +640,7 @@ class LessonViewModel @Inject constructor(
                 lastAnswerCorrect = null,
                 feedbackMessage = null,
                 explanation = null,
+                hintText = null,
                 exercises = state.exercises.map { resetExercise(it) }
             )
         }
@@ -587,6 +652,7 @@ class LessonViewModel @Inject constructor(
             is Exercise.FillBlank -> exercise.copy(userAnswer = "")
             is Exercise.Matching -> exercise.copy(selectedPairs = emptyMap())
             is Exercise.Translation -> exercise.copy(userAnswer = "")
+            is Exercise.WordTiles -> exercise.copy(selectedWords = emptyList())
             is Exercise.Listening -> exercise.copy(selectedAnswer = null)
             is Exercise.Speaking -> exercise.copy(recognizedText = "")
             is Exercise.PictureMatching -> exercise.copy(selectedOptionId = null)
@@ -608,13 +674,32 @@ class LessonViewModel @Inject constructor(
         return _uiState.value.exercises.getOrNull(_uiState.value.currentExerciseIndex)
     }
 
+    private fun updateExercise(
+        updatedExercise: Exercise,
+        isAnswerReady: Boolean? = null,
+        resetFeedback: Boolean = true
+    ) {
+        val index = _uiState.value.currentExerciseIndex
+        val updatedExercises = _uiState.value.exercises.toMutableList()
+        updatedExercises[index] = updatedExercise
+        _uiState.update { state ->
+            state.copy(
+                exercises = updatedExercises,
+                isAnswerReady = isAnswerReady ?: state.isAnswerReady,
+                feedbackMessage = if (resetFeedback) null else state.feedbackMessage,
+                explanation = if (resetFeedback) null else state.explanation
+            )
+        }
+    }
+
     private suspend fun logMistake(exercise: Exercise, evaluation: ExerciseEvaluation) {
         val userId = repository.getCurrentUserSync()?.userId ?: return
         val userAnswer = when (exercise) {
             is Exercise.MultipleChoice -> exercise.selectedAnswer.orEmpty()
             is Exercise.FillBlank -> exercise.userAnswer
-            is Exercise.Matching -> exercise.selectedPairs.entries.joinToString { "${it.key}â†’${it.value}" }
+            is Exercise.Matching -> exercise.selectedPairs.entries.joinToString { "${it.key}→${it.value}" }
             is Exercise.Translation -> exercise.userAnswer
+            is Exercise.WordTiles -> exercise.selectedWords.joinToString(" ")
             is Exercise.Listening -> exercise.selectedAnswer.orEmpty()
             is Exercise.Speaking -> exercise.recognizedText
             is Exercise.PictureMatching -> exercise.selectedOptionId.orEmpty()
@@ -693,7 +778,45 @@ class LessonViewModel @Inject constructor(
                 )
             }
     }
-    
+
+    private fun buildMultipleChoiceOptions(
+        exerciseEntity: ExerciseEntity,
+        words: List<WordEntity>
+    ): List<String> {
+        val base = listOfNotNull(
+            exerciseEntity.optionA,
+            exerciseEntity.optionB,
+            exerciseEntity.optionC,
+            exerciseEntity.optionD,
+            exerciseEntity.correctAnswer
+        )
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+
+        val normalized = LinkedHashMap<String, String>()
+        base.forEach { option ->
+            val key = option.lowercase()
+            normalized.putIfAbsent(key, option)
+        }
+        if (exerciseEntity.correctAnswer.isNotBlank()) {
+            val correct = exerciseEntity.correctAnswer.trim()
+            normalized.putIfAbsent(correct.lowercase(), correct)
+        }
+
+        if (normalized.size < 4) {
+            val candidates = (words.map { it.word } + words.map { it.translation })
+                .map { it.trim() }
+                .filter { it.isNotEmpty() }
+            for (candidate in candidates.shuffled()) {
+                if (normalized.size >= 4) break
+                if (candidate.equals(exerciseEntity.correctAnswer, ignoreCase = true)) continue
+                normalized.putIfAbsent(candidate.lowercase(), candidate)
+            }
+        }
+
+        return normalized.values.toList().shuffled()
+    }
+
     private fun buildListeningOptions(
         exerciseEntity: com.example.master.data.local.entity.ExerciseEntity,
         words: List<com.example.master.data.local.entity.WordEntity>
@@ -716,7 +839,9 @@ class LessonViewModel @Inject constructor(
                 .take(4 - baseOptions.size)
         }
         
-        return baseOptions.distinct().shuffled()
+        return baseOptions
+            .distinctBy { it.trim().lowercase() }
+            .shuffled()
     }
     
     private fun buildPictureOptions(
@@ -747,6 +872,52 @@ class LessonViewModel @Inject constructor(
         return fallback.shuffled()
     }
 
+    private fun buildWordTiles(
+        exerciseEntity: com.example.master.data.local.entity.ExerciseEntity,
+        words: List<WordEntity>
+    ): List<String> {
+        if (!exerciseEntity.matchPairs.isNullOrBlank()) {
+            return runCatching {
+                val listType = object : TypeToken<List<String>>() {}.type
+                gson.fromJson<List<String>>(exerciseEntity.matchPairs, listType)
+            }.getOrNull()?.filter { it.isNotBlank() }.orEmpty()
+        }
+
+        val answerWords = splitAnswerWords(exerciseEntity.correctAnswer)
+        val translationTokens = words.map { it.translation.lowercase() }.toSet()
+        val useTranslations = exerciseEntity.correctAnswer.any { it.code > 127 } ||
+            answerWords.any { it.lowercase() in translationTokens }
+        val distractors = (if (useTranslations) words.map { it.translation } else words.map { it.word })
+            .filter { it.isNotBlank() && it !in answerWords }
+            .distinct()
+            .shuffled()
+            .take(3)
+
+        return (answerWords + distractors).shuffled()
+    }
+
+    private fun buildAvailableTiles(tiles: List<String>, selected: List<String>): List<String> {
+        val remaining = tiles.toMutableList()
+        selected.forEach { word -> remaining.remove(word) }
+        return remaining
+    }
+
+    private fun splitAnswerWords(text: String): List<String> {
+        return text.split(" ")
+            .map { it.replace(Regex("[^\\p{L}\\p{N}']"), "") }
+            .filter { it.isNotBlank() }
+    }
+
+    private fun expectedTileCount(exercise: Exercise.WordTiles): Int {
+        val tokens = exercise.correctAnswer
+            .lowercase()
+            .replace(Regex("[^\\p{L}\\p{N}']"), " ")
+            .trim()
+            .split(Regex("\\s+"))
+            .filter { it.isNotBlank() }
+        return tokens.size.coerceAtLeast(1)
+    }
+
     private fun buildSpeedMatchExercise(words: List<WordEntity>): Exercise.SpeedMatching? {
         val pairs = words.shuffled().take(6).map { word ->
             SpeedMatchPair(
@@ -771,6 +942,215 @@ class LessonViewModel @Inject constructor(
         )
     }
 
+    private fun exerciseDedupKey(exercise: Exercise): String {
+        val type = when (exercise) {
+            is Exercise.MultipleChoice -> "MULTIPLE_CHOICE"
+            is Exercise.FillBlank -> "FILL_BLANK"
+            is Exercise.Translation -> "TRANSLATION"
+            is Exercise.WordTiles -> "WORD_TILES"
+            is Exercise.Matching -> "MATCHING"
+            is Exercise.Listening -> "LISTENING"
+            is Exercise.Speaking -> "SPEAKING"
+            is Exercise.PictureMatching -> "PICTURE_MATCH"
+            is Exercise.Flashcard -> "FLASHCARD"
+            is Exercise.SpeedMatching -> "SPEED_MATCH"
+        }
+        val question = exercise.question.trim().lowercase()
+        val answer = exercise.correctAnswer.trim().lowercase()
+        return "$type|$question|$answer"
+    }
+
+    private fun ensureAllExerciseTypes(
+        exercises: List<Exercise>,
+        words: List<WordEntity>
+    ): List<Exercise> {
+        if (words.isEmpty()) return exercises
+
+        val types = exercises.map { it::class }.toSet()
+        val baseWord = words.first()
+        val fallbackWord = words.getOrNull(1) ?: baseWord
+        val extended = exercises.toMutableList()
+
+        if (Exercise.MultipleChoice::class !in types) {
+            val options = (listOf(baseWord.translation) + words.map { it.translation })
+                .distinct()
+                .shuffled()
+                .take(4)
+            extended.add(
+                Exercise.MultipleChoice(
+                    id = -3001,
+                    question = "Choose the meaning of \"${baseWord.word}\"",
+                    correctAnswer = baseWord.translation,
+                    word = baseWord,
+                    explanation = baseWord.exampleTranslation,
+                    options = options
+                )
+            )
+        }
+
+        if (Exercise.FillBlank::class !in types) {
+            extended.add(
+                Exercise.FillBlank(
+                    id = -3002,
+                    question = "I ____ ${fallbackWord.word}.",
+                    correctAnswer = "like",
+                    word = fallbackWord,
+                    explanation = "Use a common verb"
+                )
+            )
+        }
+
+        if (Exercise.Translation::class !in types) {
+            extended.add(
+                Exercise.Translation(
+                    id = -3003,
+                    question = "Translate: ${baseWord.translation}",
+                    correctAnswer = baseWord.word,
+                    word = baseWord,
+                    explanation = baseWord.exampleTranslation
+                )
+            )
+        }
+
+        if (Exercise.Matching::class !in types) {
+            val pairs = words.shuffled().take(4).map { MatchPair(it.word, it.translation) }
+            extended.add(
+                Exercise.Matching(
+                    id = -3004,
+                    question = "Match the words with their translations",
+                    correctAnswer = "",
+                    word = baseWord,
+                    explanation = null,
+                    pairs = pairs
+                )
+            )
+        }
+
+        if (Exercise.Listening::class !in types) {
+            val options = words.map { it.word }.distinct().shuffled().take(4)
+            extended.add(
+                Exercise.Listening(
+                    id = -3005,
+                    question = "Listen and choose the word",
+                    correctAnswer = baseWord.word,
+                    word = baseWord,
+                    explanation = null,
+                    audioUrl = baseWord.audioUrl,
+                    options = if (options.contains(baseWord.word)) options else (options + baseWord.word).take(4)
+                )
+            )
+        }
+
+        if (Exercise.Speaking::class !in types) {
+            extended.add(
+                Exercise.Speaking(
+                    id = -3006,
+                    question = "Speak the highlighted phrase",
+                    correctAnswer = baseWord.word,
+                    word = baseWord,
+                    explanation = null,
+                    prompt = baseWord.word
+                )
+            )
+        }
+
+        if (Exercise.PictureMatching::class !in types) {
+            val options = words.shuffled().take(4).map { word ->
+                PictureOption(
+                    id = word.word,
+                    label = word.word,
+                    imageUrl = word.imageUrl
+                )
+            }
+            extended.add(
+                Exercise.PictureMatching(
+                    id = -3007,
+                    question = "Tap the picture that matches the word",
+                    correctAnswer = baseWord.word,
+                    word = baseWord,
+                    explanation = null,
+                    options = options
+                )
+            )
+        }
+
+        if (Exercise.Flashcard::class !in types) {
+            extended.add(
+                Exercise.Flashcard(
+                    id = -3008,
+                    question = baseWord.word,
+                    correctAnswer = baseWord.translation,
+                    word = baseWord,
+                    explanation = null,
+                    frontText = baseWord.word,
+                    backText = baseWord.translation
+                )
+            )
+        }
+
+        if (Exercise.WordTiles::class !in types) {
+            val translationTiles = buildTranslationTilesExercise(words)
+            if (translationTiles != null) {
+                extended.add(translationTiles)
+            } else {
+                val answer = "I am ${baseWord.word}"
+                extended.add(
+                    Exercise.WordTiles(
+                        id = -3009,
+                        question = "Translate: ${baseWord.translation}",
+                        correctAnswer = answer,
+                        word = baseWord,
+                        explanation = null,
+                        tiles = buildWordTilesFromAnswer(answer, words)
+                    )
+                )
+            }
+        }
+
+        if (Exercise.SpeedMatching::class !in types) {
+            buildSpeedMatchExercise(words)?.let { extended.add(it) }
+        }
+
+        return extended
+    }
+
+    private fun buildWordTilesFromAnswer(
+        answer: String,
+        words: List<WordEntity>,
+        useTranslations: Boolean = false
+    ): List<String> {
+        val answerWords = splitAnswerWords(answer)
+        val distractors = (if (useTranslations) words.map { it.translation } else words.map { it.word })
+            .filter { it.isNotBlank() && it !in answerWords }
+            .distinct()
+            .shuffled()
+            .take(3)
+        return (answerWords + distractors).shuffled()
+    }
+
+    private fun buildTranslationTilesExercise(words: List<WordEntity>): Exercise.WordTiles? {
+        val candidate = words.firstOrNull {
+            it.exampleSentence.isNotBlank() && it.exampleTranslation.isNotBlank()
+        } ?: return null
+
+        val toEnglish = candidate.id % 2 == 0
+        val question = if (toEnglish) {
+            "Translate: ${candidate.exampleTranslation}"
+        } else {
+            "Dich: ${candidate.exampleSentence}"
+        }
+        val answer = if (toEnglish) candidate.exampleSentence else candidate.exampleTranslation
+
+        return Exercise.WordTiles(
+            id = -3009,
+            question = question,
+            correctAnswer = answer,
+            word = candidate,
+            explanation = null,
+            tiles = buildWordTilesFromAnswer(answer, words, useTranslations = !toEnglish)
+        )
+    }
+
     private fun buildGeneratedExercises(words: List<WordEntity>): List<Exercise> {
         if (words.isEmpty()) return emptyList()
 
@@ -778,10 +1158,27 @@ class LessonViewModel @Inject constructor(
         val exercises = mutableListOf<Exercise>()
 
         wordPool.forEachIndexed { idx, word ->
-            val options = (listOf(word.translation) + words.filter { it.id != word.id }.map { it.translation })
+            val baseOptions = (listOf(word.translation) + words.filter { it.id != word.id }.map { it.translation })
                 .distinct()
                 .shuffled()
-                .take(4)
+                .toMutableList()
+            if (!baseOptions.contains(word.translation)) {
+                baseOptions.add(0, word.translation)
+            }
+            val options = baseOptions
+                .distinct()
+                .shuffled()
+                .let { list ->
+                    if (list.contains(word.translation)) {
+                        val trimmed = list.take(4).toMutableList()
+                        if (!trimmed.contains(word.translation)) {
+                            trimmed[trimmed.lastIndex] = word.translation
+                        }
+                        trimmed
+                    } else {
+                        list.take(4)
+                    }
+                }
                 .ifEmpty { listOf(word.translation) }
 
             exercises.add(

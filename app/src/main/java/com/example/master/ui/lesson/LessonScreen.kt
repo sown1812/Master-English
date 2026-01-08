@@ -11,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
@@ -42,9 +44,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
 import com.example.master.ui.lesson.components.FlashcardExercise
 import com.example.master.ui.lesson.components.SpeedMatchingExercise
+import com.example.master.ui.lesson.components.WordTilesExercise
+import kotlin.math.roundToInt
 
 @Composable
 fun LessonScreen(
@@ -72,208 +75,284 @@ fun LessonScreen(
                 )
             )
     ) {
-        if (uiState.isLoading) {
-            CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-        } else {
-            Column(modifier = Modifier.fillMaxSize()) {
-                val progress = if (uiState.totalExercises == 0) {
-                    0f
-                } else {
-                    (uiState.currentExerciseIndex + 1).toFloat() / uiState.totalExercises.toFloat()
-                }
-                
-                LessonTopBar(
-                    title = uiState.lessonTitle,
-                    progress = progress,
-                    hearts = uiState.hearts,
-                    totalHearts = uiState.totalHearts,
-                    score = uiState.score,
-                    accuracy = uiState.accuracy,
-                    onExit = onExit
-                )
-                
-                LessonStatsCard(
-                    current = uiState.currentExerciseIndex + 1,
-                    total = uiState.totalExercises,
-                    correct = uiState.correctAnswers,
-                    wrong = uiState.wrongAnswers
-                )
-                
-                Box(
+        when {
+            uiState.networkError != null -> {
+                Card(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 12.dp)
+                        .align(Alignment.Center)
+                        .padding(24.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White)
                 ) {
-                    val currentExercise = uiState.exercises.getOrNull(uiState.currentExerciseIndex)
-                    
-                    when (currentExercise) {
-                        is Exercise.MultipleChoice -> {
-                            MultipleChoiceExercise(
-                                exercise = currentExercise,
-                                onAnswerSelected = { viewModel.onEvent(LessonEvent.AnswerSelected(it)) },
-                                showResult = uiState.showResult,
-                                isCorrect = uiState.lastAnswerCorrect,
-                                onPlayNormal = {
-                                    val word = currentExercise.word?.word?.takeIf { it.isNotBlank() }
-                                        ?: currentExercise.question
-                                    onPlayAudio(word, currentExercise.word?.audioUrl, false)
-                                },
-                                onPlaySlow = {
-                                    val word = currentExercise.word?.word?.takeIf { it.isNotBlank() }
-                                        ?: currentExercise.question
-                                    onPlayAudio(word, currentExercise.word?.audioUrl, true)
-                                }
-                            )
-                        }
-                        
-                        is Exercise.FillBlank -> {
-                            FillBlankExercise(
-                                exercise = currentExercise,
-                                onAnswerChanged = { viewModel.onEvent(LessonEvent.FillBlankAnswered(it)) },
-                                showResult = uiState.showResult,
-                                isCorrect = uiState.lastAnswerCorrect,
-                                onPlayNormal = {
-                                    val text = currentExercise.word?.word
-                                        ?: currentExercise.question
-                                    onPlayAudio(text, currentExercise.word?.audioUrl, false)
-                                },
-                                onPlaySlow = {
-                                    val text = currentExercise.word?.word
-                                        ?: currentExercise.question
-                                    onPlayAudio(text, currentExercise.word?.audioUrl, true)
-                                }
-                            )
-                        }
-                        
-                        is Exercise.Matching -> {
-                            MatchingExercise(
-                                exercise = currentExercise,
-                                onPairMatched = { left, right ->
-                                    viewModel.onEvent(LessonEvent.PairMatched(left, right))
-                                },
-                                showResult = uiState.showResult,
-                                isCorrect = uiState.lastAnswerCorrect
-                            )
-                        }
-                        
-                        is Exercise.Translation -> {
-                            TranslationExercise(
-                                exercise = currentExercise,
-                                onAnswerChanged = { viewModel.onEvent(LessonEvent.FillBlankAnswered(it)) },
-                                showResult = uiState.showResult,
-                                isCorrect = uiState.lastAnswerCorrect,
-                                onPlayNormal = {
-                                    onPlayAudio(currentExercise.question, currentExercise.word?.audioUrl, false)
-                                },
-                                onPlaySlow = {
-                                    onPlayAudio(currentExercise.question, currentExercise.word?.audioUrl, true)
-                                }
-                            )
-                        }
-                        
-                        is Exercise.Listening -> {
-                            ListeningExercise(
-                                exercise = currentExercise,
-                                onPlayNormal = {
-                                    onPlayAudio(
-                                        currentExercise.word?.word ?: currentExercise.question,
-                                        currentExercise.audioUrl ?: currentExercise.word?.audioUrl,
-                                        false
-                                    )
-                                },
-                                onPlaySlow = {
-                                    onPlayAudio(
-                                        currentExercise.word?.word ?: currentExercise.question,
-                                        currentExercise.audioUrl ?: currentExercise.word?.audioUrl,
-                                        true
-                                    )
-                                },
-                                onAnswerSelected = { viewModel.onEvent(LessonEvent.AnswerSelected(it)) },
-                                showResult = uiState.showResult,
-                                isCorrect = uiState.lastAnswerCorrect
-                            )
-                        }
-                        
-                        is Exercise.Speaking -> {
-                            SpeakingExercise(
-                                exercise = currentExercise,
-                                onStartRecording = { prompt ->
-                                    onRequestSpeechRecognition(prompt)
-                                },
-                                onPlayPrompt = {
-                                    val prompt = currentExercise.prompt.ifBlank { currentExercise.word?.word ?: "" }
-                                    if (prompt.isNotBlank()) {
-                                        onPlayAudio(prompt, currentExercise.word?.audioUrl, false)
-                                    }
-                                },
-                                onPlayPromptSlow = {
-                                    val prompt = currentExercise.prompt.ifBlank { currentExercise.word?.word ?: "" }
-                                    if (prompt.isNotBlank()) {
-                                        onPlayAudio(prompt, currentExercise.word?.audioUrl, true)
-                                    }
-                                },
-                                showResult = uiState.showResult,
-                                isCorrect = uiState.lastAnswerCorrect
-                            )
-                        }
-                        
-                        is Exercise.PictureMatching -> {
-                            PictureMatchingExercise(
-                                exercise = currentExercise,
-                                onOptionSelected = { optionId ->
-                                    viewModel.onEvent(LessonEvent.PictureOptionSelected(optionId))
-                                },
-                                showResult = uiState.showResult,
-                                isCorrect = uiState.lastAnswerCorrect
-                            )
-                        }
-
-                        is Exercise.Flashcard -> {
-                            FlashcardExercise(
-                                exercise = currentExercise,
-                                showResult = uiState.showResult,
-                                onFlip = { flipped -> viewModel.onEvent(LessonEvent.FlashcardFlipped(flipped)) },
-                                onRemembered = { remembered ->
-                                    viewModel.onEvent(LessonEvent.FlashcardRated(remembered))
-                                }
-                            )
-                        }
-
-                        is Exercise.SpeedMatching -> {
-                            SpeedMatchingExercise(
-                                exercise = currentExercise,
-                                showResult = uiState.showResult,
-                                onClueSelected = { viewModel.onEvent(LessonEvent.SpeedMatchClueSelected(it)) },
-                                onWordSelected = { viewModel.onEvent(LessonEvent.SpeedMatchWordSelected(it)) },
-                                onTick = { viewModel.onEvent(LessonEvent.SpeedMatchTick) }
-                            )
-                        }
-                        
-                        null -> {
-                            Text(
-                                text = "No exercise available",
-                                modifier = Modifier.align(Alignment.Center),
-                                style = MaterialTheme.typography.titleMedium
-                            )
+                    Column(
+                        modifier = Modifier.padding(20.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Text(
+                            text = uiState.networkError ?: "",
+                            style = MaterialTheme.typography.titleMedium,
+                            textAlign = TextAlign.Center
+                        )
+                        Button(onClick = onExit) {
+                            Text("Quay lại")
                         }
                     }
                 }
-                
-                if (uiState.showResult && (uiState.feedbackMessage != null || uiState.explanation != null)) {
-                    FeedbackCard(
-                        feedback = uiState.feedbackMessage,
-                        explanation = uiState.explanation
+            }
+            uiState.isLoading -> {
+                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+            }
+            else -> {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    val progress = if (uiState.totalExercises == 0) {
+                        0f
+                    } else {
+                        (uiState.currentExerciseIndex + 1).toFloat() / uiState.totalExercises.toFloat()
+                    }
+                    
+                    LessonTopBar(
+                        title = uiState.lessonTitle,
+                        progress = progress,
+                        hearts = uiState.hearts,
+                        totalHearts = uiState.totalHearts,
+                        onExit = onExit
+                    )
+                    
+                    LessonStatsCard(
+                        current = uiState.currentExerciseIndex + 1,
+                        total = uiState.totalExercises,
+                        correct = uiState.correctAnswers,
+                        wrong = uiState.wrongAnswers
+                    )
+                    val scrollState = rememberScrollState()
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .verticalScroll(scrollState)
+                            .padding(vertical = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        val currentExercise = uiState.exercises.getOrNull(uiState.currentExerciseIndex)
+                        when (currentExercise) {
+                            is Exercise.MultipleChoice -> {
+                                MultipleChoiceExercise(
+                                    exercise = currentExercise,
+                                    onAnswerSelected = { viewModel.onEvent(LessonEvent.AnswerSelected(it)) },
+                                    showResult = uiState.showResult,
+                                    isCorrect = uiState.lastAnswerCorrect,
+                                    onPlayNormal = {
+                                        val word = currentExercise.word?.word?.takeIf { it.isNotBlank() }
+                                            ?: currentExercise.question
+                                        onPlayAudio(word, currentExercise.word?.audioUrl, false)
+                                    },
+                                    onPlaySlow = {
+                                        val word = currentExercise.word?.word?.takeIf { it.isNotBlank() }
+                                            ?: currentExercise.question
+                                        onPlayAudio(word, currentExercise.word?.audioUrl, true)
+                                    }
+                                )
+                            }
+
+                            is Exercise.FillBlank -> {
+                                FillBlankExercise(
+                                    exercise = currentExercise,
+                                    onAnswerChanged = { viewModel.onEvent(LessonEvent.FillBlankAnswered(it)) },
+                                    showResult = uiState.showResult,
+                                    isCorrect = uiState.lastAnswerCorrect,
+                                    onPlayNormal = {
+                                        val text = currentExercise.word?.word
+                                            ?: currentExercise.question
+                                        onPlayAudio(text, currentExercise.word?.audioUrl, false)
+                                    },
+                                    onPlaySlow = {
+                                        val text = currentExercise.word?.word
+                                            ?: currentExercise.question
+                                        onPlayAudio(text, currentExercise.word?.audioUrl, true)
+                                    }
+                                )
+                            }
+
+                            is Exercise.Matching -> {
+                                MatchingExercise(
+                                    exercise = currentExercise,
+                                    onPairMatched = { left, right ->
+                                        viewModel.onEvent(LessonEvent.PairMatched(left, right))
+                                    },
+                                    showResult = uiState.showResult,
+                                    isCorrect = uiState.lastAnswerCorrect
+                                )
+                            }
+
+                            is Exercise.Translation -> {
+                                TranslationExercise(
+                                    exercise = currentExercise,
+                                    onAnswerChanged = { viewModel.onEvent(LessonEvent.FillBlankAnswered(it)) },
+                                    showResult = uiState.showResult,
+                                    isCorrect = uiState.lastAnswerCorrect,
+                                    onPlayNormal = {
+                                        onPlayAudio(currentExercise.question, currentExercise.word?.audioUrl, false)
+                                    },
+                                    onPlaySlow = {
+                                        onPlayAudio(currentExercise.question, currentExercise.word?.audioUrl, true)
+                                    }
+                                )
+                            }
+
+                            is Exercise.WordTiles -> {
+                                WordTilesExercise(
+                                    exercise = currentExercise,
+                                    onTileSelected = { viewModel.onEvent(LessonEvent.WordTileSelected(it)) },
+                                    onTileRemoved = { viewModel.onEvent(LessonEvent.WordTileRemoved(it)) },
+                                    showResult = uiState.showResult,
+                                    isCorrect = uiState.lastAnswerCorrect,
+                                    onPlayNormal = {
+                                        onPlayAudio(currentExercise.question, currentExercise.word?.audioUrl, false)
+                                    },
+                                    onPlaySlow = {
+                                        onPlayAudio(currentExercise.question, currentExercise.word?.audioUrl, true)
+                                    }
+                                )
+                            }
+
+                            is Exercise.Listening -> {
+                                ListeningExercise(
+                                    exercise = currentExercise,
+                                    onPlayNormal = {
+                                        onPlayAudio(
+                                            currentExercise.word?.word ?: currentExercise.question,
+                                            currentExercise.audioUrl ?: currentExercise.word?.audioUrl,
+                                            false
+                                        )
+                                    },
+                                    onPlaySlow = {
+                                        onPlayAudio(
+                                            currentExercise.word?.word ?: currentExercise.question,
+                                            currentExercise.audioUrl ?: currentExercise.word?.audioUrl,
+                                            true
+                                        )
+                                    },
+                                    onAnswerSelected = { viewModel.onEvent(LessonEvent.AnswerSelected(it)) },
+                                    showResult = uiState.showResult,
+                                    isCorrect = uiState.lastAnswerCorrect
+                                )
+                            }
+
+                            is Exercise.Speaking -> {
+                                SpeakingExercise(
+                                    exercise = currentExercise,
+                                    onStartRecording = { prompt ->
+                                        onRequestSpeechRecognition(prompt)
+                                    },
+                                    onPlayPrompt = {
+                                        val prompt = currentExercise.prompt.ifBlank { currentExercise.word?.word ?: "" }
+                                        if (prompt.isNotBlank()) {
+                                            onPlayAudio(prompt, currentExercise.word?.audioUrl, false)
+                                        }
+                                    },
+                                    onPlayPromptSlow = {
+                                        val prompt = currentExercise.prompt.ifBlank { currentExercise.word?.word ?: "" }
+                                        if (prompt.isNotBlank()) {
+                                            onPlayAudio(prompt, currentExercise.word?.audioUrl, true)
+                                        }
+                                    },
+                                    showResult = uiState.showResult,
+                                    isCorrect = uiState.lastAnswerCorrect
+                                )
+                            }
+
+                            is Exercise.PictureMatching -> {
+                                PictureMatchingExercise(
+                                    exercise = currentExercise,
+                                    onOptionSelected = { optionId ->
+                                        viewModel.onEvent(LessonEvent.PictureOptionSelected(optionId))
+                                    },
+                                    showResult = uiState.showResult,
+                                    isCorrect = uiState.lastAnswerCorrect
+                                )
+                            }
+
+                            is Exercise.Flashcard -> {
+                                FlashcardExercise(
+                                    exercise = currentExercise,
+                                    showResult = uiState.showResult,
+                                    onFlip = { flipped -> viewModel.onEvent(LessonEvent.FlashcardFlipped(flipped)) },
+                                    onRemembered = { remembered ->
+                                        viewModel.onEvent(LessonEvent.FlashcardRated(remembered))
+                                    }
+                                )
+                            }
+
+                            is Exercise.SpeedMatching -> {
+                                SpeedMatchingExercise(
+                                    exercise = currentExercise,
+                                    showResult = uiState.showResult,
+                                    onClueSelected = { viewModel.onEvent(LessonEvent.SpeedMatchClueSelected(it)) },
+                                    onWordSelected = { viewModel.onEvent(LessonEvent.SpeedMatchWordSelected(it)) },
+                                    onTick = { viewModel.onEvent(LessonEvent.SpeedMatchTick) }
+                                )
+                            }
+
+                            null -> {
+                                Text(
+                                    text = "No exercise available",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
+                        }
+                    }
+                    
+                    if (uiState.showResult && (uiState.feedbackMessage != null || uiState.explanation != null)) {
+                        FeedbackCard(
+                            feedback = uiState.feedbackMessage,
+                            explanation = uiState.explanation
+                        )
+                    }
+                    
+                    if (!uiState.showResult && !uiState.isAnswerReady) {
+                        Text(
+                            text = "Hoàn thành câu trả lời để tiếp tục.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Color(0xFF64748B),
+                            modifier = Modifier.padding(horizontal = 20.dp)
+                        )
+                    }
+
+                    if (!uiState.showResult) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.End
+                        ) {
+                            Button(
+                                onClick = { viewModel.onEvent(LessonEvent.ShowHint) },
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE5E7EB))
+                            ) {
+                                Text(text = "Hint (-10)", color = Color(0xFF1F2937))
+                            }
+                        }
+                    }
+
+                    uiState.hintText?.let { hint ->
+                        FeedbackCard(
+                            feedback = "Hint",
+                            explanation = hint
+                        )
+                    }
+
+                    BottomActionButton(
+                        showResult = uiState.showResult,
+                        isAnswerReady = uiState.isAnswerReady,
+                        isLastExercise = uiState.currentExerciseIndex == uiState.totalExercises - 1,
+                        onSubmit = { viewModel.onEvent(LessonEvent.SubmitAnswer) },
+                        onNext = { viewModel.onEvent(LessonEvent.NextExercise) }
                     )
                 }
-                
-                BottomActionButton(
-                    showResult = uiState.showResult,
-                    isAnswerReady = uiState.isAnswerReady,
-                    isLastExercise = uiState.currentExerciseIndex == uiState.totalExercises - 1,
-                    onSubmit = { viewModel.onEvent(LessonEvent.SubmitAnswer) },
-                    onNext = { viewModel.onEvent(LessonEvent.NextExercise) }
-                )
             }
         }
     }
@@ -335,8 +414,6 @@ fun LessonTopBar(
     progress: Float,
     hearts: Int,
     totalHearts: Int,
-    score: Int,
-    accuracy: Float,
     onExit: () -> Unit
 ) {
     Column(
@@ -379,16 +456,6 @@ fun LessonTopBar(
                         style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold)
                     )
                 }
-                Text(
-                    text = "Score: $score",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF6366F1)
-                )
-                Text(
-                    text = "Accuracy: ${(accuracy * 100).roundToInt()}%",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = Color(0xFF10B981)
-                )
             }
         }
         
@@ -496,7 +563,7 @@ fun LessonCompletionDialog(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = if (result.isPassed) "Lesson Complete!" else "Lesson Over",
+                    text = if (result.isPassed) "Passed" else "Not passed",
                     textAlign = TextAlign.Center,
                     style = MaterialTheme.typography.titleLarge
                 )
@@ -504,6 +571,12 @@ fun LessonCompletionDialog(
         },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = if (result.isPassed) "Bạn đã qua màn." else "Bạn chưa qua màn.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color(0xFF6B7280)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
                 Text(
                     text = "Score: ${result.correctAnswers}/${result.totalExercises}",
                     style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)

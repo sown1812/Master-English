@@ -16,16 +16,17 @@ data class NotificationSettings(
     val reminderTime: String
 )
 
+private val Context.notificationSettingsDataStore by preferencesDataStore(name = "notification_settings")
+
 class NotificationSettingsStore @Inject constructor(
     @ApplicationContext private val context: Context
 ) {
-    private val Context.dataStore by preferencesDataStore(name = "notification_settings")
 
     private val notificationsEnabledKey = booleanPreferencesKey("notifications_enabled")
     private val reminderEnabledKey = booleanPreferencesKey("reminder_enabled")
     private val reminderTimeKey = stringPreferencesKey("reminder_time")
 
-    val settings: Flow<NotificationSettings> = context.dataStore.data.map { prefs ->
+    val settings: Flow<NotificationSettings> = context.notificationSettingsDataStore.data.map { prefs ->
         NotificationSettings(
             notificationsEnabled = prefs[notificationsEnabledKey] ?: true,
             reminderEnabled = prefs[reminderEnabledKey] ?: false,
@@ -34,14 +35,14 @@ class NotificationSettingsStore @Inject constructor(
     }
 
     suspend fun setNotificationsEnabled(enabled: Boolean) {
-        context.dataStore.edit { prefs -> prefs[notificationsEnabledKey] = enabled }
+        context.notificationSettingsDataStore.edit { prefs -> prefs[notificationsEnabledKey] = enabled }
     }
 
     suspend fun setReminderEnabled(enabled: Boolean) {
-        context.dataStore.edit { prefs -> prefs[reminderEnabledKey] = enabled }
+        context.notificationSettingsDataStore.edit { prefs -> prefs[reminderEnabledKey] = enabled }
     }
 
     suspend fun setReminderTime(time: String) {
-        context.dataStore.edit { prefs -> prefs[reminderTimeKey] = time }
+        context.notificationSettingsDataStore.edit { prefs -> prefs[reminderTimeKey] = time }
     }
 }

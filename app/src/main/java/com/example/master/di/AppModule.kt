@@ -9,7 +9,7 @@ import com.example.master.data.local.AppDatabase
 import com.example.master.data.local.GameStateStore
 import com.example.master.data.local.NotificationSettingsStore
 import com.example.master.data.local.PendingSyncStore
-import com.example.master.data.local.WordleStateStore
+import com.example.master.data.local.ShopSyncStore
 import com.example.master.data.repository.LearningRepository
 import com.example.master.di.ApplicationScope
 import com.example.master.network.ApiService
@@ -59,15 +59,17 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideWordleStateStore(@ApplicationContext context: Context): WordleStateStore =
-        WordleStateStore(context)
-
-    @Provides
-    @Singleton
     fun providePendingSyncStore(
         @ApplicationContext context: Context,
         gson: Gson
     ): PendingSyncStore = PendingSyncStore(context, gson)
+
+    @Provides
+    @Singleton
+    fun provideShopSyncStore(
+        @ApplicationContext context: Context,
+        gson: Gson
+    ): ShopSyncStore = ShopSyncStore(context, gson)
 
     @Provides
     @Singleton
@@ -112,17 +114,5 @@ object AppModule {
         repository = repository,
         apiService = apiService,
         pendingSyncStore = pendingSyncStore
-    )
-
-    @Provides
-    @Singleton
-    fun provideOfflineManager(
-        @ApplicationContext context: Context,
-        apiService: ApiService,
-        repository: LearningRepository
-    ): com.example.master.sync.OfflineManager = com.example.master.sync.OfflineManager(
-        apiService = apiService,
-        repository = repository,
-        appContext = context
     )
 }
