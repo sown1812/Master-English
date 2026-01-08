@@ -3,7 +3,7 @@ services:
   - type: web
     name: master-backend
     runtime: docker
-    repo: https://github.com/Start-Up-Team-7/Master-English # Note: User will connect their own repo, this is placeholder or auto-detected by Render
+    repo: https://github.com/sown1812/Master-English
     plan: free
     region: singapore # Optional, but good for latency
     envVars:
