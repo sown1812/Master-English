@@ -1,19 +1,35 @@
 services:
+  # The Backend Web Service
   - type: web
-    name: masterenglish-server
-    env: docker
-    rootDir: .
-    dockerfilePath: server/Dockerfile
-    autoDeploy: true
+    name: master-backend
+    runtime: docker
+    repo: https://github.com/Start-Up-Team-7/Master-English # Note: User will connect their own repo, this is placeholder or auto-detected by Render
     plan: free
+    region: singapore # Optional, but good for latency
     envVars:
       - key: PORT
-        value: "8080"
+        value: 8080
       - key: DB_URL
-        sync: false
+        fromDatabase:
+          name: master-db
+          property: connectionString
       - key: DB_USER
-        sync: false
+        fromDatabase:
+          name: master-db
+          property: user
       - key: DB_PASSWORD
-        sync: false
+        fromDatabase:
+          name: master-db
+          property: password
       - key: FIREBASE_CREDENTIALS_JSON
-        sync: false
+        sync: false # Prompts the user to input this value on creation
+
+databases:
+  # The PostgreSQL Database
+  - name: master-db
+    plan: free
+    region: singapore
+    databaseName: master_db
+    user: master_user
+
+version: "1"
