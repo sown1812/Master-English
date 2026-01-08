@@ -9,6 +9,9 @@ interface WordDao {
     
     @Query("SELECT * FROM words")
     fun getAllWords(): Flow<List<WordEntity>>
+
+    @Query("SELECT * FROM words ORDER BY id")
+    suspend fun getAllWordsList(): List<WordEntity>
     
     @Query("SELECT * FROM words WHERE lessonId = :lessonId ORDER BY id")
     fun getWordsByLesson(lessonId: Int): Flow<List<WordEntity>>

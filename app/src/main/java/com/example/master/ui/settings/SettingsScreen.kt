@@ -66,13 +66,19 @@ fun SettingsScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF8FAFC))
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         SectionHeader("Thông báo")
         SettingToggle(
-            icon = { Icon(Icons.Filled.Notifications, contentDescription = null) },
+            icon = {
+                Icon(
+                    Icons.Filled.Notifications,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            },
             title = "Thông báo",
             description = "Nhận nhắc nhở học và streak",
             checked = state.notificationsEnabled,
@@ -107,7 +113,13 @@ fun SettingsScreen(
 
         SectionHeader("Âm thanh")
         SettingToggle(
-            icon = { Icon(Icons.Filled.VolumeUp, contentDescription = null) },
+            icon = {
+                Icon(
+                    Icons.Filled.VolumeUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            },
             title = "Âm thanh",
             description = "Bật tắt hiệu ứng âm thanh",
             checked = state.soundEnabled,
@@ -115,7 +127,13 @@ fun SettingsScreen(
         )
 
         SettingToggle(
-            icon = { Icon(Icons.Filled.VolumeUp, contentDescription = null) },
+            icon = {
+                Icon(
+                    Icons.Filled.VolumeUp,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            },
             title = "Tự phát audio",
             description = "Tự phát chậm khi vào bài mới",
             checked = state.autoPlayAudio,
@@ -124,7 +142,13 @@ fun SettingsScreen(
 
         SectionHeader("Giao diện")
         SettingToggle(
-            icon = { Icon(Icons.Filled.DarkMode, contentDescription = null) },
+            icon = {
+                Icon(
+                    Icons.Filled.DarkMode,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            },
             title = "Dark mode",
             description = "Chuyển giao diện tối",
             checked = state.darkMode,
@@ -135,7 +159,7 @@ fun SettingsScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White)
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
         ) {
             Column(
                 modifier = Modifier.padding(16.dp),
@@ -145,7 +169,7 @@ fun SettingsScreen(
                 Text(
                     text = "Đăng xuất để đổi tài khoản khác.",
                     style = MaterialTheme.typography.bodySmall,
-                    color = Color(0xFF6B7280)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Button(
                     onClick = {
@@ -159,7 +183,7 @@ fun SettingsScreen(
                     Text("Đăng xuất", color = Color.White)
                 }
                 state.message?.let {
-                    Text(it, color = Color(0xFF0F172A), style = MaterialTheme.typography.bodySmall)
+                    Text(it, color = MaterialTheme.colorScheme.onSurface, style = MaterialTheme.typography.bodySmall)
                 }
             }
         }
@@ -206,7 +230,7 @@ private fun SettingToggle(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Row(
@@ -220,7 +244,7 @@ private fun SettingToggle(
                 icon()
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-                    Text(description, style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                    Text(description, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             Switch(checked = checked, onCheckedChange = onCheckedChange)
@@ -233,7 +257,7 @@ private fun SectionHeader(title: String) {
     Text(
         text = title,
         style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-        color = Color(0xFF475569)
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 
@@ -248,7 +272,7 @@ private fun ReminderCard(
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -260,10 +284,18 @@ private fun ReminderCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Schedule, contentDescription = null)
+                    Icon(
+                        Icons.Filled.Schedule,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
                     Column {
                         Text("Nhắc giờ học", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold))
-                        Text("Thiết lập nhắc giờ hằng ngày", style = MaterialTheme.typography.bodySmall, color = Color(0xFF6B7280))
+                        Text(
+                            "Thiết lập nhắc giờ hằng ngày",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
                 Switch(checked = enabled, onCheckedChange = onToggle)

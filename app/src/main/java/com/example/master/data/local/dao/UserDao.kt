@@ -45,6 +45,9 @@ interface UserDao {
     
     @Delete
     suspend fun deleteUser(user: UserEntity)
+
+    @Query("DELETE FROM users WHERE userId != :userId")
+    suspend fun deleteOtherUsers(userId: String)
     
     @Query("DELETE FROM users")
     suspend fun deleteAllUsers()

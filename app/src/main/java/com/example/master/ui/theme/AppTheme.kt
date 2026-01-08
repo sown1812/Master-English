@@ -29,12 +29,12 @@ object ThemeCatalog {
             darkScheme = darkColorScheme(
                 primary = Color(0xFFFF8A3D),
                 secondary = Color(0xFFFFC857),
-                background = Color(0xFF12131A),
-                surface = Color(0xFF1A1B25),
-                onPrimary = Color(0xFF0B0B0F),
-                onSecondary = Color(0xFF0B0B0F),
-                onBackground = Color(0xFFE5E7EB),
-                onSurface = Color(0xFFE5E7EB)
+                background = Color(0xFF0F1116),
+                surface = Color(0xFF171A22),
+                onPrimary = Color(0xFF0B0C10),
+                onSecondary = Color(0xFF0B0C10),
+                onBackground = Color(0xFFF9FAFB),
+                onSurface = Color(0xFFF9FAFB)
             )
         ),
         AppThemePalette(
@@ -52,12 +52,12 @@ object ThemeCatalog {
             darkScheme = darkColorScheme(
                 primary = Color(0xFF3FB9E0),
                 secondary = Color(0xFF4CE9C2),
-                background = Color(0xFF0B1720),
-                surface = Color(0xFF11202A),
-                onPrimary = Color(0xFF041016),
-                onSecondary = Color(0xFF041016),
-                onBackground = Color(0xFFE2E8F0),
-                onSurface = Color(0xFFE2E8F0)
+                background = Color(0xFF0F1116),
+                surface = Color(0xFF171A22),
+                onPrimary = Color(0xFF0B0C10),
+                onSecondary = Color(0xFF0B0C10),
+                onBackground = Color(0xFFF9FAFB),
+                onSurface = Color(0xFFF9FAFB)
             )
         ),
         AppThemePalette(
@@ -75,12 +75,12 @@ object ThemeCatalog {
             darkScheme = darkColorScheme(
                 primary = Color(0xFF45C38A),
                 secondary = Color(0xFF9AE6B4),
-                background = Color(0xFF0C1A12),
-                surface = Color(0xFF13241A),
-                onPrimary = Color(0xFF07120D),
-                onSecondary = Color(0xFF07120D),
-                onBackground = Color(0xFFE2E8F0),
-                onSurface = Color(0xFFE2E8F0)
+                background = Color(0xFF0F1116),
+                surface = Color(0xFF171A22),
+                onPrimary = Color(0xFF0B0C10),
+                onSecondary = Color(0xFF0B0C10),
+                onBackground = Color(0xFFF9FAFB),
+                onSurface = Color(0xFFF9FAFB)
             )
         ),
         AppThemePalette(
@@ -98,12 +98,12 @@ object ThemeCatalog {
             darkScheme = darkColorScheme(
                 primary = Color(0xFFFB7185),
                 secondary = Color(0xFFF9A8D4),
-                background = Color(0xFF1B0D12),
-                surface = Color(0xFF25121A),
-                onPrimary = Color(0xFF12060B),
-                onSecondary = Color(0xFF12060B),
-                onBackground = Color(0xFFE5E7EB),
-                onSurface = Color(0xFFE5E7EB)
+                background = Color(0xFF0F1116),
+                surface = Color(0xFF171A22),
+                onPrimary = Color(0xFF0B0C10),
+                onSecondary = Color(0xFF0B0C10),
+                onBackground = Color(0xFFF9FAFB),
+                onSurface = Color(0xFFF9FAFB)
             )
         ),
         AppThemePalette(
@@ -121,12 +121,12 @@ object ThemeCatalog {
             darkScheme = darkColorScheme(
                 primary = Color(0xFF7C8CFF),
                 secondary = Color(0xFFA78BFA),
-                background = Color(0xFF0B0F1A),
-                surface = Color(0xFF121827),
-                onPrimary = Color(0xFF0B0F1A),
-                onSecondary = Color(0xFF0B0F1A),
-                onBackground = Color(0xFFE2E8F0),
-                onSurface = Color(0xFFE2E8F0)
+                background = Color(0xFF0F1116),
+                surface = Color(0xFF171A22),
+                onPrimary = Color(0xFF0B0C10),
+                onSecondary = Color(0xFF0B0C10),
+                onBackground = Color(0xFFF9FAFB),
+                onSurface = Color(0xFFF9FAFB)
             ),
             preferDark = true
         )

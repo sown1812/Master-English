@@ -1,6 +1,7 @@
 {
   "project_info": {
     "project_number": "1061693617019",
+    "firebase_url": "https://masterenglish1812-default-rtdb.asia-southeast1.firebasedatabase.app",
     "project_id": "masterenglish1812",
     "storage_bucket": "masterenglish1812.firebasestorage.app"
   },
@@ -14,11 +15,11 @@
       },
       "oauth_client": [
         {
-          "client_id": "1061693617019-if74ng4ddmcivj6fu2dm3bk1jkj2v35k.apps.googleusercontent.com",
+          "client_id": "1061693617019-81gqv6vpgdml473d507mqufdshnmkc13.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.example.master",
-            "certificate_hash": "5a06dfef263129bc7ae088f0af56bb7b38a961a0"
+            "certificate_hash": "a23195b909c4289a30dfe0317566b23b1a9f8867"
           }
         },
         {

@@ -9,6 +9,9 @@ interface UserProgressDao {
     
     @Query("SELECT * FROM user_progress WHERE userId = :userId")
     fun getUserProgress(userId: String): Flow<List<UserProgressEntity>>
+
+    @Query("SELECT * FROM user_progress WHERE userId = :userId")
+    suspend fun getUserProgressList(userId: String): List<UserProgressEntity>
     
     @Query("SELECT * FROM user_progress WHERE userId = :userId AND lessonId = :lessonId")
     suspend fun getLessonProgress(userId: String, lessonId: Int): UserProgressEntity?

@@ -10,12 +10,13 @@ import com.example.master.data.local.GameStateStore
 import com.example.master.data.local.NotificationSettingsStore
 import com.example.master.data.local.PendingSyncStore
 import com.example.master.data.local.ShopSyncStore
+import com.example.master.data.remote.RealtimeDatabaseService
 import com.example.master.data.repository.LearningRepository
 import com.example.master.di.ApplicationScope
-import com.example.master.network.ApiService
 import com.example.master.network.DictionaryApiService
 import com.example.master.network.NetworkModule
 import com.example.master.notifications.ReminderScheduler
+import com.google.firebase.database.FirebaseDatabase
 import com.google.gson.Gson
 import dagger.Module
 import dagger.Provides
@@ -52,8 +53,18 @@ object AppModule {
     fun provideAuthManager(
         repository: LearningRepository,
         authProvider: AuthProvider,
+        gameStateStore: GameStateStore,
+        pendingSyncStore: PendingSyncStore,
+        shopSyncStore: ShopSyncStore,
         @ApplicationScope appScope: CoroutineScope
-    ): AuthManager = AuthManager(repository, authProvider, appScope)
+    ): AuthManager = AuthManager(
+        repository = repository,
+        authProvider = authProvider,
+        gameStateStore = gameStateStore,
+        pendingSyncStore = pendingSyncStore,
+        shopSyncStore = shopSyncStore,
+        appScope = appScope
+    )
 
     @Provides
     @Singleton
@@ -102,8 +113,7 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideApiService(authManager: AuthManager): ApiService =
-        NetworkModule.createApiService(authManager)
+    fun provideFirebaseDatabase(): FirebaseDatabase = FirebaseDatabase.getInstance()
 
     @Provides
     @Singleton
@@ -115,12 +125,12 @@ object AppModule {
     fun provideSyncManager(
         authManager: AuthManager,
         repository: LearningRepository,
-        apiService: ApiService,
+        realtimeDatabaseService: RealtimeDatabaseService,
         pendingSyncStore: PendingSyncStore
     ): com.example.master.sync.SyncManager = com.example.master.sync.SyncManager(
         authManager = authManager,
         repository = repository,
-        apiService = apiService,
+        realtimeDatabaseService = realtimeDatabaseService,
         pendingSyncStore = pendingSyncStore
     )
 }

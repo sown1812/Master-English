@@ -35,6 +35,8 @@ class LearningRepository @Inject constructor(
     
     fun getAllLessons(): Flow<List<LessonEntity>> = lessonDao.getAllLessons()
 
+    suspend fun getAllLessonsList(): List<LessonEntity> = lessonDao.getAllLessonsList()
+
     fun getAllSections(): Flow<List<SectionEntity>> = sectionDao.getAllSections()
 
     fun getAllUnits(): Flow<List<UnitEntity>> = unitDao.getAllUnits()
@@ -55,6 +57,8 @@ class LearningRepository @Inject constructor(
     // ==================== Words ====================
     
     fun getAllWords(): Flow<List<WordEntity>> = wordDao.getAllWords()
+
+    suspend fun getAllWordsList(): List<WordEntity> = wordDao.getAllWordsList()
     
     fun getWordsByLesson(lessonId: Int): Flow<List<WordEntity>> = wordDao.getWordsByLesson(lessonId)
         .onEach { words ->
@@ -130,6 +134,8 @@ class LearningRepository @Inject constructor(
     
     fun getExercisesByLesson(lessonId: Int): Flow<List<ExerciseEntity>> = 
         exerciseDao.getExercisesByLesson(lessonId)
+
+    suspend fun getAllExercisesList(): List<ExerciseEntity> = exerciseDao.getAllExercisesList()
     
     suspend fun getExerciseById(exerciseId: Int): ExerciseEntity? = 
         exerciseDao.getExerciseById(exerciseId)
@@ -153,6 +159,8 @@ class LearningRepository @Inject constructor(
     suspend fun insertUser(user: UserEntity) = userDao.insertUser(user)
     
     suspend fun updateUser(user: UserEntity) = userDao.updateUser(user)
+
+    suspend fun keepOnlyUser(userId: String) = userDao.deleteOtherUsers(userId)
 
     suspend fun unlockLessonWithCoins(lessonId: Int, cost: Int): UnlockResult {
         val user = userDao.getCurrentUserSync() ?: return UnlockResult(
@@ -242,6 +250,9 @@ class LearningRepository @Inject constructor(
     
     fun getUserProgress(userId: String): Flow<List<UserProgressEntity>> = 
         progressDao.getUserProgress(userId)
+
+    suspend fun getUserProgressList(userId: String): List<UserProgressEntity> =
+        progressDao.getUserProgressList(userId)
     
     suspend fun getLessonProgress(userId: String, lessonId: Int): UserProgressEntity? = 
         progressDao.getLessonProgress(userId, lessonId)
@@ -278,6 +289,9 @@ class LearningRepository @Inject constructor(
     
     fun getUserAchievements(userId: String): Flow<List<AchievementEntity>> = 
         achievementDao.getUserAchievements(userId)
+
+    suspend fun getUserAchievementsList(userId: String): List<AchievementEntity> =
+        achievementDao.getUserAchievementsList(userId)
     
     suspend fun initializeAchievements(userId: String) {
         val totalLessons = getTotalLessonsCount().coerceAtLeast(1)

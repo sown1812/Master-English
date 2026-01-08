@@ -7,10 +7,8 @@ import com.example.master.core.network.NetworkMonitor
 import com.example.master.data.local.GameStateStore
 import com.example.master.data.local.PendingShopAction
 import com.example.master.data.local.ShopSyncStore
+import com.example.master.data.remote.RealtimeDatabaseService
 import com.example.master.data.repository.LearningRepository
-import com.example.master.network.ApiService
-import com.example.master.network.UpdateBoosterRequest
-import com.example.master.network.UpdateQuestRequest
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -54,7 +52,7 @@ class StoreViewModel @Inject constructor(
     private val repository: LearningRepository,
     private val authManager: AuthManager,
     private val gameStateStore: GameStateStore,
-    private val api: ApiService,
+    private val realtimeDatabaseService: RealtimeDatabaseService,
     private val shopSyncStore: ShopSyncStore,
     private val networkMonitor: NetworkMonitor
 ) : ViewModel() {
@@ -203,12 +201,12 @@ class StoreViewModel @Inject constructor(
             val userId = authManager.getCurrentUserId() ?: return@launch
             if (!networkMonitor.isConnectedNow()) return@launch
 
-            runCatching { api.getGameState(userId) }.onSuccess { resp ->
-                resp.boosters.forEach {
-                    if (it.isOwned) gameStateStore.setBoosterOwned(normalizeBoosterKey(it.boosterKey))
+            runCatching { realtimeDatabaseService.getGameState(userId) }.onSuccess { resp ->
+                resp.boosters.forEach { key ->
+                    gameStateStore.setBoosterOwned(normalizeBoosterKey(key))
                 }
-                resp.quests.forEach {
-                    if (it.isClaimed) gameStateStore.setQuestClaimed(normalizeQuestKey(it.questKey))
+                resp.quests.forEach { key ->
+                    gameStateStore.setQuestClaimed(normalizeQuestKey(key))
                 }
                 _uiState.update { it.copy(message = null) }
             }.onFailure {
@@ -231,10 +229,10 @@ class StoreViewModel @Inject constructor(
             queue.forEach { action ->
                 val result = when (action.type) {
                     "BOOSTER" -> runCatching {
-                        api.updateBooster(action.userId, UpdateBoosterRequest(action.key, action.value))
+                        realtimeDatabaseService.setBoosterOwned(action.userId, action.key, action.value)
                     }
                     "QUEST" -> runCatching {
-                        api.updateQuest(action.userId, UpdateQuestRequest(action.key, action.value))
+                        realtimeDatabaseService.setQuestClaimed(action.userId, action.key, action.value)
                     }
                     else -> runCatching { Unit }
                 }
@@ -271,7 +269,7 @@ class StoreViewModel @Inject constructor(
             gameStateStore.setBoosterOwned(booster.key)
             if (networkMonitor.isConnectedNow()) {
                 runCatching {
-                    api.updateBooster(userId, UpdateBoosterRequest(booster.key, true))
+                    realtimeDatabaseService.setBoosterOwned(userId, booster.key, true)
                 }.onFailure {
                     shopSyncStore.enqueue(PendingShopAction(userId, "BOOSTER", booster.key, true))
                 }
@@ -305,7 +303,7 @@ class StoreViewModel @Inject constructor(
             repository.addCoins(userId, quest.rewardCoins)
             gameStateStore.setQuestClaimed(quest.key)
             if (networkMonitor.isConnectedNow()) {
-                runCatching { api.updateQuest(userId, UpdateQuestRequest(quest.key, true)) }
+                runCatching { realtimeDatabaseService.setQuestClaimed(userId, quest.key, true) }
                     .onFailure {
                         shopSyncStore.enqueue(PendingShopAction(userId, "QUEST", quest.key, true))
                     }

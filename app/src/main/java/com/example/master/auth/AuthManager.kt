@@ -4,6 +4,9 @@ import com.example.master.core.user.UserProfile
 import com.example.master.data.local.entity.UserEntity
 import com.example.master.data.repository.LearningRepository
 import com.example.master.auth.di.AuthProvider
+import com.example.master.data.local.GameStateStore
+import com.example.master.data.local.PendingSyncStore
+import com.example.master.data.local.ShopSyncStore
 import com.example.master.di.ApplicationScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -26,18 +29,23 @@ import javax.inject.Singleton
 class AuthManager @Inject constructor(
     private val repository: LearningRepository,
     private val authProvider: AuthProvider,
+    private val gameStateStore: GameStateStore,
+    private val pendingSyncStore: PendingSyncStore,
+    private val shopSyncStore: ShopSyncStore,
     @ApplicationScope private val appScope: CoroutineScope
 ) {
     private val firebaseAuth: FirebaseAuth = authProvider.firebaseAuth
 
     @Volatile
     private var cachedIdToken: String? = null
+    private var lastUserId: String? = null
 
     private val authListener = FirebaseAuth.AuthStateListener { fa ->
         val user = fa.currentUser
         if (user != null) {
             _authState.value = AuthState.Authenticated(user)
             appScope.launch {
+                handleUserSwitch(user.uid)
                 val localUser = ensureLocalUser(user)
                 _currentUser.value = localUser
                 refreshTokenCache(forceRefresh = false)
@@ -46,6 +54,7 @@ class AuthManager @Inject constructor(
             cachedIdToken = null
             _currentUser.value = null
             _authState.value = AuthState.Unauthenticated
+            lastUserId = null
         }
     }
     
@@ -65,6 +74,7 @@ class AuthManager @Inject constructor(
         if (firebaseUser != null) {
             _authState.value = AuthState.Authenticated(firebaseUser)
             appScope.launch {
+                handleUserSwitch(firebaseUser.uid)
                 val localUser = ensureLocalUser(firebaseUser)
                 _currentUser.value = localUser
             }
@@ -141,6 +151,7 @@ class AuthManager @Inject constructor(
         cachedIdToken = null
         _currentUser.value = null
         _authState.value = AuthState.Unauthenticated
+        lastUserId = null
         firebaseAuth.addAuthStateListener(authListener)
     }
 
@@ -188,6 +199,19 @@ class AuthManager @Inject constructor(
         val created = createLocalUser(firebaseUser, fallbackDisplayName ?: firebaseUser.displayName)
         if (initializeAchievementsIfNew) repository.initializeAchievements(firebaseUser.uid)
         return created
+    }
+
+    private suspend fun handleUserSwitch(newUserId: String) {
+        if (lastUserId == null || lastUserId == newUserId) {
+            lastUserId = newUserId
+            repository.keepOnlyUser(newUserId)
+            return
+        }
+        repository.keepOnlyUser(newUserId)
+        gameStateStore.clearAll()
+        pendingSyncStore.clear()
+        shopSyncStore.clear()
+        lastUserId = newUserId
     }
     
     fun getCurrentUserId(): String? {

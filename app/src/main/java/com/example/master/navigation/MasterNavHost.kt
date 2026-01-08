@@ -373,6 +373,7 @@ fun MasterApp() {
 
             composable("learning") {
                 val viewModel: HomeViewModel = hiltViewModel()
+                val storeViewModel: StoreViewModel = hiltViewModel()
                 val context = LocalContext.current
 
                 LaunchedEffect(viewModel) {
@@ -393,7 +394,10 @@ fun MasterApp() {
                     }
                 }
 
-                HomeRoute(homeViewModel = viewModel)
+                HomeRoute(
+                    homeViewModel = viewModel,
+                    storeViewModel = storeViewModel
+                )
             }
 
 

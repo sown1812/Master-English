@@ -38,4 +38,11 @@ class GameStateStore(private val context: Context) {
         }
     }
 
+    suspend fun clearAll() {
+        context.dataStore.edit { prefs ->
+            prefs.remove(boosterOwnedKey)
+            prefs.remove(questClaimedKey)
+        }
+    }
+
 }

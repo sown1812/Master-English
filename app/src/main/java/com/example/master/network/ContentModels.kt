@@ -70,6 +70,22 @@ fun LessonRemote.toEntity(): LessonEntity = LessonEntity(
     levelId = 0
 )
 
+fun LessonEntity.toRemote(): LessonRemote = LessonRemote(
+    id = id,
+    title = title,
+    description = description,
+    order = order,
+    totalWords = totalWords,
+    totalExercises = totalExercises,
+    difficulty = difficulty,
+    category = category,
+    iconUrl = iconUrl,
+    xpReward = xpReward,
+    coinsReward = coinsReward,
+    isUnlocked = isUnlocked,
+    isPremium = isPremium
+)
+
 fun WordRemote.toEntity(): WordEntity = WordEntity(
     word = word,
     translation = translation,
@@ -85,10 +101,43 @@ fun WordRemote.toEntity(): WordEntity = WordEntity(
     id = id
 )
 
+fun WordEntity.toRemote(): WordRemote = WordRemote(
+    id = id,
+    word = word,
+    translation = translation,
+    pronunciation = pronunciation,
+    partOfSpeech = partOfSpeech,
+    exampleSentence = exampleSentence,
+    exampleTranslation = exampleTranslation,
+    imageUrl = imageUrl,
+    audioUrl = audioUrl,
+    lessonId = lessonId,
+    difficulty = difficulty,
+    category = category
+)
+
 fun ExerciseRemote.toEntity(): ExerciseEntity = ExerciseEntity(
     id = id,
     lessonId = lessonId,
     wordId = wordId ?: 0,
+    type = type,
+    question = question,
+    correctAnswer = correctAnswer,
+    optionA = optionA,
+    optionB = optionB,
+    optionC = optionC,
+    optionD = optionD,
+    matchPairs = matchPairs,
+    hint = hint,
+    explanation = explanation,
+    order = order,
+    difficulty = difficulty
+)
+
+fun ExerciseEntity.toRemote(): ExerciseRemote = ExerciseRemote(
+    id = id,
+    lessonId = lessonId,
+    wordId = if (wordId == 0) null else wordId,
     type = type,
     question = question,
     correctAnswer = correctAnswer,

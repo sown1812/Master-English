@@ -4,7 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.master.data.repository.LearningRepository
 import com.example.master.data.local.entity.WordEntity
-import com.example.master.network.ApiService
+import com.example.master.data.remote.RealtimeDatabaseService
 import com.example.master.network.toEntity
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -53,7 +53,7 @@ private const val WORDLE_LENGTH = 5
 @HiltViewModel
 class WordleViewModel @Inject constructor(
     private val repository: LearningRepository,
-    private val api: ApiService
+    private val realtimeDatabaseService: RealtimeDatabaseService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(WordleUiState())
@@ -242,11 +242,11 @@ class WordleViewModel @Inject constructor(
             return
         }
 
-        val lessons = runCatching { api.getLessons() }.getOrNull().orEmpty()
+        val lessons = runCatching { realtimeDatabaseService.fetchLessons() }.getOrNull().orEmpty()
         if (lessons.isEmpty()) return
 
         val remoteWords = lessons.flatMap { lesson ->
-            runCatching { api.getWordsByLesson(lesson.id) }.getOrDefault(emptyList())
+            runCatching { realtimeDatabaseService.fetchWords(lesson.id) }.getOrDefault(emptyList())
         }
 
         if (remoteWords.isNotEmpty()) {

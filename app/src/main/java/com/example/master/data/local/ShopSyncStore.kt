@@ -38,4 +38,8 @@ class ShopSyncStore(private val context: Context, private val gson: Gson) {
         current.add(action)
         saveQueue(current)
     }
+
+    suspend fun clear() {
+        context.shopSyncDataStore.edit { prefs -> prefs.remove(queueKey) }
+    }
 }

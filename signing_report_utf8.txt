@@ -1,0 +1,74 @@
+﻿
+> Task :app:signingReport
+Variant: devDebug
+Config: debug
+Store: C:\Users\ThinkPad\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 50:CD:20:50:59:57:A7:66:49:69:6D:0F:62:22:F2:FE
+SHA1: A2:31:95:B9:09:C4:28:9A:30:DF:E0:31:75:66:B2:3B:1A:9F:88:67
+SHA-256: EF:F1:83:DA:5F:CA:3C:E7:DC:65:D9:09:34:77:12:40:4D:24:1E:41:07:FF:A1:80:58:2B:F9:F7:13:53:AD:20
+Valid until: Wednesday 24 February 2055
+----------
+Variant: stagingDebug
+Config: debug
+Store: C:\Users\ThinkPad\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 50:CD:20:50:59:57:A7:66:49:69:6D:0F:62:22:F2:FE
+SHA1: A2:31:95:B9:09:C4:28:9A:30:DF:E0:31:75:66:B2:3B:1A:9F:88:67
+SHA-256: EF:F1:83:DA:5F:CA:3C:E7:DC:65:D9:09:34:77:12:40:4D:24:1E:41:07:FF:A1:80:58:2B:F9:F7:13:53:AD:20
+Valid until: Wednesday 24 February 2055
+----------
+Variant: prodDebug
+Config: debug
+Store: C:\Users\ThinkPad\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 50:CD:20:50:59:57:A7:66:49:69:6D:0F:62:22:F2:FE
+SHA1: A2:31:95:B9:09:C4:28:9A:30:DF:E0:31:75:66:B2:3B:1A:9F:88:67
+SHA-256: EF:F1:83:DA:5F:CA:3C:E7:DC:65:D9:09:34:77:12:40:4D:24:1E:41:07:FF:A1:80:58:2B:F9:F7:13:53:AD:20
+Valid until: Wednesday 24 February 2055
+----------
+Variant: devRelease
+Config: null
+Store: null
+Alias: null
+----------
+Variant: stagingRelease
+Config: null
+Store: null
+Alias: null
+----------
+Variant: prodRelease
+Config: null
+Store: null
+Alias: null
+----------
+Variant: devDebugAndroidTest
+Config: debug
+Store: C:\Users\ThinkPad\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 50:CD:20:50:59:57:A7:66:49:69:6D:0F:62:22:F2:FE
+SHA1: A2:31:95:B9:09:C4:28:9A:30:DF:E0:31:75:66:B2:3B:1A:9F:88:67
+SHA-256: EF:F1:83:DA:5F:CA:3C:E7:DC:65:D9:09:34:77:12:40:4D:24:1E:41:07:FF:A1:80:58:2B:F9:F7:13:53:AD:20
+Valid until: Wednesday 24 February 2055
+----------
+Variant: stagingDebugAndroidTest
+Config: debug
+Store: C:\Users\ThinkPad\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 50:CD:20:50:59:57:A7:66:49:69:6D:0F:62:22:F2:FE
+SHA1: A2:31:95:B9:09:C4:28:9A:30:DF:E0:31:75:66:B2:3B:1A:9F:88:67
+SHA-256: EF:F1:83:DA:5F:CA:3C:E7:DC:65:D9:09:34:77:12:40:4D:24:1E:41:07:FF:A1:80:58:2B:F9:F7:13:53:AD:20
+Valid until: Wednesday 24 February 2055
+----------
+Variant: prodDebugAndroidTest
+Config: debug
+Store: C:\Users\ThinkPad\.android\debug.keystore
+Alias: AndroidDebugKey
+MD5: 50:CD:20:50:59:57:A7:66:49:69:6D:0F:62:22:F2:FE
+SHA1: A2:31:95:B9:09:C4:28:9A:30:DF:E0:31:75:66:B2:3B:1A:9F:88:67
+SHA-256: EF:F1:83:DA:5F:CA:3C:E7:DC:65:D9:09:34:77:12:40:4D:24:1E:41:07:FF:A1:80:58:2B:F9:F7:13:53:AD:20
+Valid until: Wednesday 24 February 2055
+----------
+
+BUILD SUCCESSFUL in 2s
+1 actionable task: 1 executed

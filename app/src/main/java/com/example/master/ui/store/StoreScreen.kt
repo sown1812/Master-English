@@ -40,7 +40,6 @@ fun StoreRoute(
     StoreScreen(
         state = state.value,
         onBuyBooster = viewModel::purchaseBooster,
-        onClaimQuest = viewModel::claimQuest,
         onMessageShown = viewModel::clearMessage
     )
 }
@@ -49,7 +48,6 @@ fun StoreRoute(
 fun StoreScreen(
     state: StoreUiState,
     onBuyBooster: (String) -> Unit,
-    onClaimQuest: (String) -> Unit,
     onMessageShown: () -> Unit
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
@@ -88,7 +86,6 @@ fun StoreScreen(
                 )
             }
             BoostersSection(state.boosters, state.coins, onBuyBooster)
-            QuestsSection(state.quests, onClaimQuest)
         }
 
         SnackbarHost(
@@ -200,101 +197,3 @@ private fun BoostersSection(
     }
 }
 
-@Composable
-private fun QuestsSection(
-    quests: List<QuestUi>,
-    onClaim: (String) -> Unit
-) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Text(
-            text = "Nhiệm vụ",
-            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-            color = Color(0xFF3C2A6E)
-        )
-        quests.forEach { quest ->
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White)
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = quest.title,
-                            style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
-                            color = Color(0xFF203040)
-                        )
-                        Card(
-                            shape = RoundedCornerShape(8.dp),
-                            colors = CardDefaults.cardColors(containerColor = Color(0xFFE0E7FF))
-                        ) {
-                            Text(
-                                text = quest.type,
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                style = MaterialTheme.typography.labelMedium,
-                                color = Color(0xFF374151)
-                            )
-                        }
-                    }
-                    Text(
-                        text = quest.description,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF5C6A7C)
-                    )
-                    Text(
-                        text = "Tiến độ: ${quest.stepsLabel}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color(0xFF4E5A6C)
-                    )
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "Thưởng:",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = Color(0xFF2F6F80)
-                        )
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            androidx.compose.material3.Icon(
-                                painter = painterResource(id = R.drawable.ic_coin),
-                                contentDescription = null,
-                                tint = Color.Unspecified
-                            )
-                            Text(
-                                text = quest.rewardCoins.toString(),
-                                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Bold),
-                                color = Color(0xFF2F6F80)
-                            )
-                        }
-                        Button(
-                            onClick = { onClaim(quest.key) },
-                            enabled = quest.isCompleted && !quest.isClaimed,
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E88A8))
-                        ) {
-                            Text(
-                                text = when {
-                                    quest.isClaimed -> "Đã nhận"
-                                    quest.isCompleted -> "Nhận"
-                                    else -> "Chưa xong"
-                                },
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}

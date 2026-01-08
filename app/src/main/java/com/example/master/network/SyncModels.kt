@@ -40,7 +40,8 @@ data class UserRemote(
     val lessonsCompleted: Int,
     val exercisesCompleted: Int,
     val isPremium: Boolean,
-    val premiumExpiryDate: Long? = null
+    val premiumExpiryDate: Long? = null,
+    val updatedAt: Long = System.currentTimeMillis()
 )
 
 data class ProgressRemote(
@@ -98,7 +99,8 @@ fun UserEntity.toRemote(): UserRemote =
         lessonsCompleted = lessonsCompleted,
         exercisesCompleted = exercisesCompleted,
         isPremium = isPremium,
-        premiumExpiryDate = premiumExpiryDate
+        premiumExpiryDate = premiumExpiryDate,
+        updatedAt = updatedAt
     )
 
 fun UserRemote.toEntity(existing: UserEntity? = null): UserEntity {
@@ -120,7 +122,7 @@ fun UserRemote.toEntity(existing: UserEntity? = null): UserEntity {
         isPremium = isPremium,
         premiumExpiryDate = premiumExpiryDate,
         createdAt = existing?.createdAt ?: now,
-        updatedAt = now,
+        updatedAt = updatedAt,
         lastSyncedAt = now
     )
 }

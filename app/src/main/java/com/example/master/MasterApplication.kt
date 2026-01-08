@@ -5,6 +5,7 @@ import com.example.master.di.ApplicationScope
 import com.example.master.sync.ContentSyncManager
 import com.example.master.sync.SyncManager
 import com.example.master.core.network.NetworkMonitor
+import com.google.firebase.database.FirebaseDatabase
 import dagger.hilt.android.HiltAndroidApp
 import javax.inject.Inject
 import kotlinx.coroutines.CoroutineScope
@@ -29,6 +30,7 @@ class MasterApplication : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        runCatching { FirebaseDatabase.getInstance().setPersistenceEnabled(true) }
         applicationScope.launch {
             runCatching { contentSyncManager.refreshFromServer() }
             // Khi online sẽ flush ngay các tiến độ/achievements còn hàng đợi

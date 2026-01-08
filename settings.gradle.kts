@@ -20,9 +20,5 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "Master"
-if (System.getenv("SKIP_ANDROID") == "true") {
-    include(":server")
-} else {
-    include(":app", ":server")
-}
+include(":app")
  

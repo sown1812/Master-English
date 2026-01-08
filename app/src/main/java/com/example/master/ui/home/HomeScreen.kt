@@ -46,6 +46,8 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,7 +61,11 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
+import androidx.compose.ui.platform.LocalContext
 import com.example.master.R
+import com.example.master.ui.store.QuestUi
+import com.example.master.ui.store.StoreViewModel
 
 private data class NavItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
@@ -70,15 +76,27 @@ private data class NavItem(
 )
 
 @Composable
-fun HomeRoute(homeViewModel: HomeViewModel) {
+fun HomeRoute(
+    homeViewModel: HomeViewModel,
+    storeViewModel: StoreViewModel
+) {
     val state by homeViewModel.uiState
+    val storeState by storeViewModel.uiState.collectAsState()
+    val context = LocalContext.current
+
+    LaunchedEffect(storeState.message) {
+        storeState.message?.let {
+            Toast.makeText(context, it, Toast.LENGTH_SHORT).show()
+            storeViewModel.clearMessage()
+        }
+    }
 
     HomeScreen(
         state = state,
+        quests = storeState.quests,
         onFlashcardClick = { homeViewModel.onFlashcardsClicked() },
         onPlayClick = { homeViewModel.onPlayClicked() },
-        onOpenStore = { homeViewModel.onStoreClicked() },
-        onQuestClick = { homeViewModel.onQuestSelected(it) },
+        onClaimQuest = storeViewModel::claimQuest,
         onBoosterClick = { homeViewModel.onBoosterSelected(it) },
         onThemeClick = { homeViewModel.onThemeSelected(it) },
         onLessonClick = { homeViewModel.onLessonSelected(it) },
@@ -89,11 +107,11 @@ fun HomeRoute(homeViewModel: HomeViewModel) {
 @Composable
 fun HomeScreen(
     state: HomeUiState,
+    quests: List<QuestUi>,
     modifier: Modifier = Modifier,
     onFlashcardClick: () -> Unit = {},
     onPlayClick: () -> Unit = {},
-    onOpenStore: () -> Unit = {},
-    onQuestClick: (Quest) -> Unit = {},
+    onClaimQuest: (String) -> Unit = {},
     onBoosterClick: (BoosterItem) -> Unit = {},
     onThemeClick: (ThemeOption) -> Unit = {},
     onLessonClick: (Int) -> Unit = {},
@@ -145,11 +163,11 @@ fun HomeScreen(
                 onLessonClick = onLessonClick,
                 onLockedLessonClick = { pendingUnlock = it }
             )
+            QuestSection(quests = quests, onClaimQuest = onClaimQuest)
             AchievementsSection(
                 totalScore = state.totalScore,
                 badges = state.badges
             )
-            QuestSection(quests = state.quests, onQuestClick = onQuestClick)
             BoosterCarousel(boosters = state.boosters, onBoosterClick = onBoosterClick)
             ThemeSelector(themes = state.themes, onThemeClick = onThemeClick)
         }
@@ -677,7 +695,10 @@ private fun AchievementChip(badge: AchievementBadge) {
 }
 
 @Composable
-private fun QuestSection(quests: List<Quest>, onQuestClick: (Quest) -> Unit) {
+private fun QuestSection(
+    quests: List<QuestUi>,
+    onClaimQuest: (String) -> Unit
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -696,7 +717,7 @@ private fun QuestSection(quests: List<Quest>, onQuestClick: (Quest) -> Unit) {
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 quests.forEach { quest ->
-                    QuestCard(quest = quest, onClick = { onQuestClick(quest) })
+                    QuestCard(quest = quest, onClaimQuest = onClaimQuest)
                 }
             }
         }
@@ -704,7 +725,11 @@ private fun QuestSection(quests: List<Quest>, onQuestClick: (Quest) -> Unit) {
 }
 
 @Composable
-private fun QuestCard(quest: Quest, onClick: () -> Unit) {
+private fun QuestCard(
+    quest: QuestUi,
+    onClaimQuest: (String) -> Unit
+) {
+    val actionEnabled = quest.isCompleted && !quest.isClaimed
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color(0xFFF4ECFF))
@@ -712,7 +737,6 @@ private fun QuestCard(quest: Quest, onClick: () -> Unit) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .clickable { onClick() }
                 .padding(horizontal = 18.dp, vertical = 18.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
@@ -749,11 +773,35 @@ private fun QuestCard(quest: Quest, onClick: () -> Unit) {
                 trackColor = Color(0xFFE8DAFF),
                 color = Color(0xFFB197F5)
             )
-            Text(
-                text = "Tiến độ: ${quest.stepsLabel}",
-                style = MaterialTheme.typography.labelMedium,
-                color = Color(0xFF6C41A1)
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Tiến độ: ${quest.stepsLabel}",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color(0xFF6C41A1)
+                )
+                Button(
+                    onClick = { onClaimQuest(quest.key) },
+                    enabled = actionEnabled,
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF6C5AE6),
+                        disabledContainerColor = Color(0xFFC7C9D9)
+                    )
+                ) {
+                    Text(
+                        text = when {
+                            quest.isClaimed -> "Đã nhận"
+                            quest.isCompleted -> "Nhận"
+                            else -> "Chưa xong"
+                        },
+                        color = Color.White
+                    )
+                }
+            }
         }
     }
 }

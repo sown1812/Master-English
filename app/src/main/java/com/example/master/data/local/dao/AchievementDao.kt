@@ -9,6 +9,9 @@ interface AchievementDao {
     
     @Query("SELECT * FROM achievements WHERE userId = :userId ORDER BY isUnlocked DESC, id")
     fun getUserAchievements(userId: String): Flow<List<AchievementEntity>>
+
+    @Query("SELECT * FROM achievements WHERE userId = :userId")
+    suspend fun getUserAchievementsList(userId: String): List<AchievementEntity>
     
     @Query("SELECT * FROM achievements WHERE userId = :userId AND isUnlocked = 1")
     fun getUnlockedAchievements(userId: String): Flow<List<AchievementEntity>>
