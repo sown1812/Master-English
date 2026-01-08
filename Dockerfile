@@ -6,8 +6,7 @@ COPY . .
 # Build the application shading dependencies into a fat JAR (or distZip/installDist)
 # Build the application shading dependencies into a fat JAR (or distZip/installDist)
 # Using installDist is standard for Ktor to get the script + libs
-RUN chmod +x ./gradlew
-RUN ./gradlew :server:installDist --no-daemon
+RUN gradle :server:installDist --no-daemon
 
 FROM eclipse-temurin:17-jre-alpine
 WORKDIR /app
