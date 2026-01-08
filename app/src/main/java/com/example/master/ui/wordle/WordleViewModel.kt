@@ -380,7 +380,6 @@ class WordleViewModel @Inject constructor(
     private suspend fun checkEnglishWord(word: String): Boolean = withContext(Dispatchers.IO) {
         if (word.length != WORDLE_LENGTH) return@withContext false
         val request = Request.Builder()
-        val request = Request.Builder()
             .url("https://api.dictionaryapi.dev/api/v2/entries/en/$word")
             .get()
             .build()
