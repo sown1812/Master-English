@@ -32,4 +32,18 @@ object NetworkModule {
             .build()
             .create(ApiService::class.java)
     }
+
+    fun createDictionaryService(): DictionaryApiService {
+        val logger = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BASIC)
+        val client = OkHttpClient.Builder()
+            .addInterceptor(logger)
+            .build()
+
+        return Retrofit.Builder()
+            .baseUrl("https://api.dictionaryapi.dev/api/v2/")
+            .client(client)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(DictionaryApiService::class.java)
+    }
 }

@@ -27,6 +27,7 @@ dependencies {
 
     // Flyway for migrations
     implementation("org.flywaydb:flyway-core:10.18.2")
+    runtimeOnly("org.flywaydb:flyway-database-postgresql:10.18.2")
 
     // Firebase auth
     implementation("com.google.firebase:firebase-admin:9.4.2")

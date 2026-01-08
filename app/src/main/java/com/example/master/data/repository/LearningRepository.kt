@@ -6,6 +6,7 @@ import com.example.master.data.local.AppDatabase
 import com.example.master.data.local.entity.*
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import java.util.Calendar
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -13,7 +14,8 @@ import kotlin.math.max
 
 @Singleton
 class LearningRepository @Inject constructor(
-    private val database: AppDatabase
+    private val database: AppDatabase,
+    private val dictionaryService: com.example.master.network.DictionaryApiService
 ) {
     
     private val wordDao = database.wordDao()
@@ -55,6 +57,51 @@ class LearningRepository @Inject constructor(
     fun getAllWords(): Flow<List<WordEntity>> = wordDao.getAllWords()
     
     fun getWordsByLesson(lessonId: Int): Flow<List<WordEntity>> = wordDao.getWordsByLesson(lessonId)
+        .onEach { words ->
+            enhancePronunciation(words)
+        }
+
+    private suspend fun enhancePronunciation(words: List<WordEntity>) {
+        // Run on IO dispatcher to avoid blocking
+        kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            words.forEach { word ->
+                if (word.pronunciation.isBlank() || word.audioUrl.isNullOrBlank()) {
+                    try {
+                        val response = dictionaryService.getWordDefinition(word.word)
+                        response.firstOrNull()?.let { entry ->
+                            // Find best phonetic (one with audio if possible)
+                            val bestPhonetic = entry.phonetics?.firstOrNull { !it.audio.isNullOrBlank() }
+                                ?: entry.phonetics?.firstOrNull()
+                            
+                            var newPronunciation = word.pronunciation
+                            var newAudioUrl = word.audioUrl
+
+                            // Use phonetic text if we don't have one
+                            if (word.pronunciation.isBlank() && !entry.phonetic.isNullOrBlank()) {
+                                newPronunciation = entry.phonetic
+                            } else if (word.pronunciation.isBlank() && !bestPhonetic?.text.isNullOrBlank()) {
+                                newPronunciation = bestPhonetic?.text ?: ""
+                            }
+
+                            // Use audio if we don't have one
+                            if (word.audioUrl.isNullOrBlank() && !bestPhonetic?.audio.isNullOrBlank()) {
+                                newAudioUrl = bestPhonetic?.audio
+                            }
+
+                            if (newPronunciation != word.pronunciation || newAudioUrl != word.audioUrl) {
+                                wordDao.insertWord(word.copy(
+                                    pronunciation = newPronunciation,
+                                    audioUrl = newAudioUrl
+                                ))
+                            }
+                        }
+                    } catch (e: Exception) {
+                        // Ignore network errors, keep old data
+                    }
+                }
+            }
+        }
+    }
     
     suspend fun getWordById(wordId: Int): WordEntity? = wordDao.getWordById(wordId)
     

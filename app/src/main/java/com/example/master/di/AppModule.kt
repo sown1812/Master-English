@@ -13,6 +13,7 @@ import com.example.master.data.local.ShopSyncStore
 import com.example.master.data.repository.LearningRepository
 import com.example.master.di.ApplicationScope
 import com.example.master.network.ApiService
+import com.example.master.network.DictionaryApiService
 import com.example.master.network.NetworkModule
 import com.example.master.notifications.ReminderScheduler
 import com.google.gson.Gson
@@ -101,6 +102,11 @@ object AppModule {
     @Singleton
     fun provideApiService(authManager: AuthManager): ApiService =
         NetworkModule.createApiService(authManager)
+
+    @Provides
+    @Singleton
+    fun provideDictionaryService(): DictionaryApiService =
+        NetworkModule.createDictionaryService()
 
     @Provides
     @Singleton
