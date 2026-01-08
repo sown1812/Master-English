@@ -1,8 +1,7 @@
 FROM gradle:8.9-jdk17 AS build
 WORKDIR /workspace
 COPY . .
-RUN chmod +x ./gradlew
-RUN ./gradlew :server:build --no-daemon
+RUN gradle :server:build --no-daemon
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app
