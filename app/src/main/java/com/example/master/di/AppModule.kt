@@ -38,8 +38,10 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideRepository(database: AppDatabase): LearningRepository =
-        LearningRepository(database)
+    fun provideRepository(
+        database: AppDatabase,
+        dictionaryService: DictionaryApiService
+    ): LearningRepository = LearningRepository(database, dictionaryService)
 
     @Provides
     @Singleton

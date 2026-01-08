@@ -78,14 +78,39 @@ fun main() {
     // Load DB config from env (DB_URL, DB_USER, DB_PASSWORD)
     val cfg = ConfigFactory.load()
     var dbUrl = System.getenv("DB_URL") ?: cfg.getString("database.url")
-    // Fix for Render/Heroku URLs which don't have jdbc: prefix
-    if (dbUrl.startsWith("postgres://")) {
-        dbUrl = dbUrl.replace("postgres://", "jdbc:postgresql://")
-    } else if (dbUrl.startsWith("postgresql://")) {
-        dbUrl = dbUrl.replace("postgresql://", "jdbc:postgresql://")
+    var dbUser = System.getenv("DB_USER") ?: cfg.getString("database.user")
+    var dbPwd  = System.getenv("DB_PASSWORD") ?: cfg.getString("database.password")
+
+    // Robust parsing for Render/Heroku URLs (postgres://user:pass@host:port/db)
+    if (dbUrl.startsWith("postgres://") || dbUrl.startsWith("postgresql://")) {
+        try {
+            // Ensure schema is http-like for standard URI parsing if needed, though URI usually handles it.
+            // We use java.net.URI to extract user info and host/port
+            val cleanUrl = dbUrl.replace("postgres://", "http://")
+                                .replace("postgresql://", "http://")
+            val uri = java.net.URI(cleanUrl)
+            
+            if (uri.userInfo != null) {
+                val parts = uri.userInfo.split(":")
+                if (parts.size >= 2) {
+                    dbUser = parts[0]
+                    dbPwd = parts[1]
+                }
+            }
+            
+            val port = if (uri.port > 0) uri.port else 5432
+            // Reconstruct standard JDBC URL
+            dbUrl = "jdbc:postgresql://${uri.host}:$port${uri.path}"
+        } catch (e: Exception) {
+            System.err.println("Failed to parse DB_URL: ${e.message}")
+            // Fallback to simple replacement if parsing fails
+             if (dbUrl.startsWith("postgres://")) {
+                dbUrl = dbUrl.replace("postgres://", "jdbc:postgresql://")
+            } else if (dbUrl.startsWith("postgresql://")) {
+                dbUrl = dbUrl.replace("postgresql://", "jdbc:postgresql://")
+            }
+        }
     }
-    val dbUser = System.getenv("DB_USER") ?: cfg.getString("database.user")
-    val dbPwd  = System.getenv("DB_PASSWORD") ?: cfg.getString("database.password")
     // Run migrations then init pool
     Migrator.migrate(dbUrl, dbUser, dbPwd)
     DbFactory.init(dbUrl, dbUser, dbPwd)
