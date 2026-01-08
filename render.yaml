@@ -1,7 +1,7 @@
 services:
   # The Backend Web Service
   - type: web
-    name: master-backend
+    name: master-backend-tet2
     runtime: docker
     repo: https://github.com/sown1812/Master-English
     plan: free
